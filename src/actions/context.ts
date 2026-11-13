@@ -28,10 +28,10 @@ export async function switchAcademicYear(academicYearId: string) {
 
 /**
  * Server Action: Switch Active Demo Role via cookie and revalidate layout.
- * Disabled in production unless explicitly enabled via ALLOW_DEMO_SWITCHING.
+ * Allowed by default for testing/demo in both dev and production unless ALLOW_DEMO_SWITCHING is explicitly set to "false".
  */
 export async function switchUserRole(role: Role) {
-  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SWITCHING !== "true") {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SWITCHING === "false") {
     throw new Error("Role switching via demo cookie is strictly forbidden in production.");
   }
 

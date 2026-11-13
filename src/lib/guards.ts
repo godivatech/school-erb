@@ -152,8 +152,8 @@ export async function resolveVerifiedSession(
     // Graceful fallback for non-request environments (CLI/tests)
   }
 
-  // If in production and demo switching is not explicitly enabled, require cryptographic session
-  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SWITCHING !== "true") {
+  // If in production and demo switching is explicitly disabled, require cryptographic session
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SWITCHING === "false") {
     throw new AuthorizationError("Authentication required: No valid session token present.");
   }
 
