@@ -86,8 +86,17 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Primary Viewport Area */}
-          <main className="flex-1 min-h-0 overflow-y-auto pb-16 md:pb-6 p-4 md:p-6 bg-slate-50 print:p-0 print:m-0 print:bg-white print:overflow-visible">
-            {children}
+          <main className="flex-1 min-h-0 overflow-y-auto pb-20 md:pb-8 p-4 md:p-6 bg-slate-50 print:p-0 print:m-0 print:bg-white print:overflow-visible flex flex-col justify-between">
+            <div className="flex-1">
+              {children}
+            </div>
+
+            {/* Application Global Footer */}
+            <footer className="mt-8 pt-4 pb-2 border-t border-slate-200/80 text-center text-xs text-slate-500 print:hidden select-none">
+              <p>
+                <strong className="font-bold text-slate-700">Designed and Developed by Godivatech</strong>
+              </p>
+            </footer>
           </main>
         </div>
       </div>

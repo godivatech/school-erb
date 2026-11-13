@@ -225,12 +225,17 @@ export function DesktopSidebar({ isCollapsed, onToggle }: DesktopSidebarProps) {
 
       {/* Footer System Status */}
       {!isCollapsed && (
-        <div className="p-3 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>System Online</span>
+        <div className="p-3 border-t border-slate-800 text-[10px] text-slate-400 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>System Online</span>
+            </div>
+            <span className="font-medium text-slate-500">Enterprise v1.0</span>
           </div>
-          <span className="font-medium text-slate-500">Enterprise v1.0</span>
+          <div className="text-[10px] text-slate-400 text-center pt-1.5 border-t border-slate-800/80">
+            <strong className="font-bold text-slate-200">Designed and Developed by Godivatech</strong>
+          </div>
         </div>
       )}
     </aside>
