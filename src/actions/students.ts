@@ -176,9 +176,45 @@ export async function admitStudentWithFamilyLink(input: AdmitStudentInput) {
         .returning();
     }
 
-    // 6. Edge Case: Roll Number Auto-Assignment if omitted or duplicate
+    // 6. Edge Case: Roll Number Validation & Conflict Resolution
     let assignedRollNo = input.rollNo;
-    if (!assignedRollNo || assignedRollNo <= 0) {
+    if (assignedRollNo && assignedRollNo > 0) {
+      const [existingRoll] = await tx
+        .select({
+          rollNo: enrollments.rollNo,
+          firstName: students.firstName,
+          lastName: students.lastName,
+        })
+        .from(enrollments)
+        .innerJoin(students, eq(enrollments.studentId, students.id))
+        .where(
+          and(
+            eq(enrollments.schoolId, session.schoolId),
+            eq(enrollments.academicYearId, input.academicYearId),
+            eq(enrollments.sectionId, input.sectionId),
+            eq(enrollments.rollNo, assignedRollNo),
+            eq(enrollments.promotionStatus, "ACTIVE")
+          )
+        )
+        .limit(1);
+
+      if (existingRoll) {
+        const [maxRoll] = await tx
+          .select({ max: sql<number>`coalesce(max(${enrollments.rollNo}), 0)` })
+          .from(enrollments)
+          .where(
+            and(
+              eq(enrollments.sectionId, input.sectionId),
+              eq(enrollments.academicYearId, input.academicYearId)
+            )
+          );
+        const nextRoll = Number(maxRoll?.max || 0) + 1;
+
+        throw new Error(
+          `Roll Number #${assignedRollNo} is already assigned to ${existingRoll.firstName} ${existingRoll.lastName} in this section. Next available roll number is #${nextRoll}.`
+        );
+      }
+    } else {
       const [maxRoll] = await tx
         .select({ max: sql<number>`coalesce(max(${enrollments.rollNo}), 0)` })
         .from(enrollments)
@@ -810,6 +846,35 @@ export async function transferStudentSection(input: TransferStudentSectionInput)
     const currentCount = Number(enrolledCountRes?.count || 0);
     if (currentCount >= targetSection.capacity) {
       throw new Error(`Cannot transfer student: Target Section ${targetSection.name} is full (${currentCount}/${targetSection.capacity} capacity).`);
+    }
+
+    // Check duplicate roll number in target section
+    if (input.newRollNo && input.newRollNo > 0) {
+      const [existingRoll] = await tx
+        .select({
+          rollNo: enrollments.rollNo,
+          firstName: students.firstName,
+          lastName: students.lastName,
+        })
+        .from(enrollments)
+        .innerJoin(students, eq(enrollments.studentId, students.id))
+        .where(
+          and(
+            eq(enrollments.schoolId, session.schoolId),
+            eq(enrollments.academicYearId, input.academicYearId),
+            eq(enrollments.sectionId, input.targetSectionId),
+            eq(enrollments.rollNo, input.newRollNo),
+            eq(enrollments.promotionStatus, "ACTIVE"),
+            sql`${enrollments.studentId} != ${input.studentId}`
+          )
+        )
+        .limit(1);
+
+      if (existingRoll) {
+        throw new Error(
+          `Cannot transfer: Roll Number #${input.newRollNo} is already assigned to ${existingRoll.firstName} ${existingRoll.lastName} in target section ${targetSection.name}.`
+        );
+      }
     }
 
     // 2. Update Enrollment

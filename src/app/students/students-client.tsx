@@ -29,6 +29,7 @@ import {
   UploadCloud,
   Download,
   Printer,
+  Receipt,
   Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,9 @@ export interface StudentListItem {
   parentPhone: string;
   address?: string;
   walletBalance: number;
+  totalInvoiced: number;
+  totalPaid: number;
+  pendingDues: number;
   status: "ACTIVE" | "TC_ISSUED" | "ALUMNI" | "DROPOUT";
   siblingCount: number;
   dob: string;
@@ -384,7 +388,9 @@ export function StudentsClient({
       "Parent Phone",
       "Emergency Contact",
       "Address",
-      "Wallet Balance",
+      "Total Invoiced (INR)",
+      "Total Paid (INR)",
+      "Pending Dues (INR)",
       "Status",
     ];
 
@@ -411,7 +417,9 @@ export function StudentsClient({
           s.parentPhone,
           s.emergencyContact || "",
           s.address || "",
-          s.walletBalance.toFixed(2),
+          s.totalInvoiced.toFixed(2),
+          s.totalPaid.toFixed(2),
+          s.pendingDues.toFixed(2),
           s.status,
         ]
           .map(escapeCsv)
@@ -640,7 +648,7 @@ export function StudentsClient({
               <TableHead className="font-bold text-slate-700">Class & Section</TableHead>
               <TableHead className="font-bold text-slate-700">Primary Parent & Phone</TableHead>
               <TableHead className="font-bold text-slate-700">Siblings</TableHead>
-              <TableHead isNumeric className="font-bold text-slate-700">Wallet Balance</TableHead>
+              <TableHead isNumeric className="font-bold text-slate-700">Fee Status</TableHead>
               <TableHead className="font-bold text-slate-700">Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -710,8 +718,35 @@ export function StudentsClient({
                       <span className="text-xs text-slate-300">—</span>
                     )}
                   </TableCell>
-                  <TableCell isNumeric className="font-tabular text-xs font-bold text-slate-900">
-                    {formatCurrency(student.walletBalance)}
+                  <TableCell isNumeric className="text-xs">
+                    <Link
+                      href={`/students/${student.id}/ledger`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="group inline-block text-right hover:underline"
+                      title="View Student Transaction History & Receipts"
+                    >
+                      {student.pendingDues > 0 ? (
+                        <div>
+                          <span className="font-tabular font-bold text-rose-700 block group-hover:text-rose-900">
+                            {formatCurrency(student.pendingDues)}
+                          </span>
+                          <span className="text-[10px] text-rose-500 font-medium flex items-center justify-end gap-0.5">
+                            Pending Due &rarr;
+                          </span>
+                        </div>
+                      ) : student.totalInvoiced > 0 ? (
+                        <div>
+                          <span className="font-tabular font-bold text-emerald-700 block group-hover:text-emerald-900">
+                            {formatCurrency(student.totalPaid)}
+                          </span>
+                          <span className="text-[10px] text-emerald-600 font-medium flex items-center justify-end gap-0.5">
+                            All Paid &rarr;
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-[11px] font-tabular">No Invoices</span>
+                      )}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -1069,10 +1104,74 @@ export function StudentsClient({
                         <span className="font-semibold text-slate-800">{selectedStudent.bloodGroup || "Not Recorded"}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 text-[10px] block">Wallet Balance</span>
-                        <span className="font-tabular font-bold text-emerald-700">
-                          {formatCurrency(selectedStudent.walletBalance)}
+                        <span className="text-slate-400 text-[10px] block">Emergency Contact</span>
+                        <span className="font-semibold text-slate-800 font-tabular">
+                          {selectedStudent.emergencyContact || selectedStudent.parentPhone}
                         </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fee & Dues Status */}
+                  <div>
+                    <div className="flex items-center justify-between pb-1.5">
+                      <h3 className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                        Fee & Dues Status
+                      </h3>
+                      {selectedStudent.pendingDues > 0 ? (
+                        <Badge variant="danger" className="text-[10px]">
+                          Pending Dues
+                        </Badge>
+                      ) : selectedStudent.totalInvoiced > 0 ? (
+                        <Badge variant="success" className="text-[10px]">
+                          All Fees Paid
+                        </Badge>
+                      ) : (
+                        <Badge variant="neutral" className="text-[10px]">
+                          No Invoices
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2.5">
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2 bg-white rounded border border-slate-200">
+                          <span className="text-slate-500 text-[10px] font-medium block">Total Fees</span>
+                          <span className="font-tabular font-bold text-slate-900 text-xs">
+                            {formatCurrency(selectedStudent.totalInvoiced)}
+                          </span>
+                        </div>
+                        <div className="p-2 bg-white rounded border border-slate-200">
+                          <span className="text-slate-500 text-[10px] font-medium block">Total Paid</span>
+                          <span className="font-tabular font-bold text-emerald-700 text-xs">
+                            {formatCurrency(selectedStudent.totalPaid)}
+                          </span>
+                        </div>
+                        <div className="p-2 bg-white rounded border border-slate-200">
+                          <span className="text-slate-500 text-[10px] font-medium block">Pending Due</span>
+                          <span className={`font-tabular font-bold text-xs ${selectedStudent.pendingDues > 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                            {formatCurrency(selectedStudent.pendingDues)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between border-t border-slate-200">
+                        <Link
+                          href={`/students/${selectedStudent.id}/ledger`}
+                          className="text-[11px] font-semibold text-navy-800 hover:text-navy-950 hover:underline flex items-center gap-1.5"
+                        >
+                          <Receipt className="h-3.5 w-3.5 text-navy-700" />
+                          <span>View Full Transaction History & Receipts &rarr;</span>
+                        </Link>
+                        {selectedStudent.pendingDues > 0 && (
+                          <Link
+                            href={`/finance/pos?query=${encodeURIComponent(selectedStudent.admissionNo)}`}
+                            className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1"
+                          >
+                            <CreditCard className="h-3 w-3" />
+                            <span>Collect at POS &rarr;</span>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1122,6 +1221,13 @@ export function StudentsClient({
 
               {/* Quick Action Buttons */}
               <div className="pt-3 border-t border-slate-200 space-y-2">
+                <Link href={`/students/${selectedStudent.id}/ledger`} className="block">
+                  <Button variant="outline" className="w-full text-xs font-semibold gap-1.5 h-8 border-slate-300 text-slate-800 hover:bg-slate-50">
+                    <Receipt className="h-3.5 w-3.5 text-navy-800" />
+                    <span>View Financial Ledger & Print Receipts</span>
+                  </Button>
+                </Link>
+
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"

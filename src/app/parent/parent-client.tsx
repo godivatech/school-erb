@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Users,
@@ -22,6 +23,7 @@ import {
   School,
   MapPin,
   UserCheck,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -356,18 +358,27 @@ export function ParentPortalClient({
           <div className="md:col-span-2 space-y-5">
             {/* Fee Dues Card */}
             <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-navy-600" />
                   <h2 className="text-sm font-bold text-slate-900">
                     Fee Statement & 1-Click Payment
                   </h2>
                 </div>
-                <div className="text-xs font-semibold text-slate-700">
-                  Total Pending:{" "}
-                  <span className="text-red-700 font-tabular font-bold">
-                    ₹{currentDues.totalDue.toLocaleString()}
-                  </span>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/students/${currentStudent.id}/ledger`}
+                    className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 hover:underline"
+                  >
+                    <Receipt className="h-3.5 w-3.5" />
+                    <span>Receipt History & Statement &rarr;</span>
+                  </Link>
+                  <div className="text-xs font-semibold text-slate-700">
+                    Total Pending:{" "}
+                    <span className="text-red-700 font-tabular font-bold">
+                      ₹{currentDues.totalDue.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -689,9 +700,9 @@ export function ParentPortalClient({
                   <div className="font-tabular text-slate-700">{currentStudent.dob}</div>
                 </div>
                 <div>
-                  <div className="text-slate-400 text-[11px]">Wallet Advance Balance</div>
-                  <div className="font-tabular font-bold text-emerald-700">
-                    ₹{parseFloat(currentStudent.walletBalance).toLocaleString()}
+                  <div className="text-slate-400 text-[11px]">Blood Group</div>
+                  <div className="font-tabular font-medium text-slate-700">
+                    {currentStudent.bloodGroup || "Not Recorded"}
                   </div>
                 </div>
               </div>

@@ -59,20 +59,22 @@ export function TopContextBar({ onOpenCommandPalette }: TopContextBarProps) {
 
       {/* Right side: Academic Year Switcher, POS Shortcut, Role Switcher */}
       <div className="flex items-center gap-2">
-        {/* Direct POS Link */}
-        <Link href="/finance/pos">
-          <Button
-            size="sm"
-            variant="subtle"
-            className="hidden md:inline-flex items-center gap-1.5 h-7 text-[11px] font-semibold"
-          >
-            <CreditCard className="h-3.5 w-3.5" strokeWidth={1.75} />
-            <span>Fee POS</span>
-            <kbd className="text-[9px] font-mono bg-white px-1 py-0.2 rounded border border-blue-200">
-              /
-            </kbd>
-          </Button>
-        </Link>
+        {/* Direct POS Link (Cashiers & Admins only) */}
+        {["SUPER_ADMIN", "PRINCIPAL", "ACCOUNTANT"].includes(currentUser.role) && (
+          <Link href="/finance/pos">
+            <Button
+              size="sm"
+              variant="subtle"
+              className="hidden md:inline-flex items-center gap-1.5 h-7 text-[11px] font-semibold"
+            >
+              <CreditCard className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <span>Fee POS</span>
+              <kbd className="text-[9px] font-mono bg-white px-1 py-0.2 rounded border border-blue-200">
+                /
+              </kbd>
+            </Button>
+          </Link>
+        )}
 
         {/* Academic Year Switcher */}
         <AcademicYearSwitcher />

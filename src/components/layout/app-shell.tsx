@@ -42,14 +42,14 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     <div
       suppressHydrationWarning
       className={cn(
-        "h-screen w-screen flex flex-col bg-slate-50 text-slate-900 overflow-hidden",
+        "h-screen w-screen flex flex-col bg-slate-50 text-slate-900 overflow-hidden print:h-auto print:w-auto print:overflow-visible print:bg-white",
         // Persistent Amber Warning Border around viewport if locked
-        isLocked && "border-[4px] border-amber-500 box-border"
+        isLocked && "border-[4px] border-amber-500 box-border print:border-none"
       )}
     >
       {/* Persistent Amber Banner if Academic Year is Locked */}
       {isLocked && (
-        <div className="bg-[#FFFBEB] text-[#92400E] border-b border-[#FDE68A] px-4 py-1.5 text-xs font-medium flex items-center justify-between select-none z-50 shrink-0 shadow-sm">
+        <div className="bg-[#FFFBEB] text-[#92400E] border-b border-[#FDE68A] px-4 py-1.5 text-xs font-medium flex items-center justify-between select-none z-50 shrink-0 shadow-sm print:hidden">
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-[#92400E] shrink-0" strokeWidth={2} />
             <span>
@@ -67,29 +67,35 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden print:overflow-visible print:h-auto">
         {/* Desktop Collapsible Sidebar */}
-        <DesktopSidebar
-          isCollapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((prev) => !prev)}
-        />
+        <div className="print:hidden">
+          <DesktopSidebar
+            isCollapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed((prev) => !prev)}
+          />
+        </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden print:overflow-visible print:h-auto">
           {/* Top Sticky 48px Context Bar */}
-          <TopContextBar
-            onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-          />
+          <div className="print:hidden">
+            <TopContextBar
+              onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+            />
+          </div>
 
           {/* Primary Viewport Area */}
-          <main className="flex-1 min-h-0 overflow-y-auto pb-16 md:pb-6 p-4 md:p-6 bg-slate-50">
+          <main className="flex-1 min-h-0 overflow-y-auto pb-16 md:pb-6 p-4 md:p-6 bg-slate-50 print:p-0 print:m-0 print:bg-white print:overflow-visible">
             {children}
           </main>
         </div>
       </div>
 
       {/* Mobile PWA Bottom Navigation */}
-      <MobileBottomNav />
+      <div className="print:hidden">
+        <MobileBottomNav />
+      </div>
 
       {/* Global Command Palette */}
       <CommandPalette

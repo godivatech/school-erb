@@ -24,11 +24,21 @@ import {
 
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
 import { getActiveContext } from "@/lib/context";
 
 export default async function FinancePage() {
   // 1. Fetch active context from cookies
   const context = await getActiveContext();
+
+  // Role-based protection: Parents and Teachers cannot access Finance Admin / POS
+  if (context.user.role === "PARENT") {
+    redirect("/parent");
+  }
+  if (context.user.role === "TEACHER") {
+    redirect("/attendance");
+  }
+
   const yearId = context.academicYearId;
   const schoolId = context.schoolId;
 

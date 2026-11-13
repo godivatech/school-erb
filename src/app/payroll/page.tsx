@@ -18,7 +18,20 @@ import {
 
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
+import { getActiveContext } from "@/lib/context";
+
 export default async function PayrollPage() {
+  const context = await getActiveContext();
+
+  // Role guard: Only Super Admin, Principal, and Accountant can access payroll
+  if (context.user.role === "PARENT") {
+    redirect("/parent");
+  }
+  if (context.user.role === "TEACHER") {
+    redirect("/attendance");
+  }
+
   // 1. Fetch active academic year
   const [activeYear] = await db
     .select()

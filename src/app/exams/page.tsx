@@ -20,8 +20,19 @@ import {
 
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
+
 export default async function ExamsOverviewPage() {
   const context = await getActiveContext();
+
+  // Role guard: Parents have marks in their Parent Portal
+  if (context.user.role === "PARENT") {
+    redirect("/parent");
+  }
+  if (context.user.role === "ACCOUNTANT") {
+    redirect("/finance");
+  }
+
   const yearId = context.academicYearId;
   const schoolId = context.schoolId;
 

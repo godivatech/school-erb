@@ -42,6 +42,33 @@ export default async function NewStudentAdmissionPage() {
 
   const countMap = new Map(enrollmentCounts.map((e) => [e.sectionId, Number(e.count)]));
 
+  // Fetch occupied roll numbers per section for duplicate roll detection
+  const occupiedRollsQuery = await db
+    .select({
+      sectionId: enrollments.sectionId,
+      rollNo: enrollments.rollNo,
+      studentName: sql<string>`concat(${students.firstName}, ' ', ${students.lastName})`,
+    })
+    .from(enrollments)
+    .innerJoin(students, eq(enrollments.studentId, students.id))
+    .where(
+      and(
+        eq(enrollments.schoolId, schoolId),
+        eq(enrollments.academicYearId, yearId),
+        eq(enrollments.promotionStatus, "ACTIVE"),
+        sql`${enrollments.rollNo} is not null`
+      )
+    );
+
+  const rollMap = new Map<string, Array<{ rollNo: number; studentName: string }>>();
+  for (const r of occupiedRollsQuery) {
+    if (r.rollNo) {
+      const list = rollMap.get(r.sectionId) || [];
+      list.push({ rollNo: Number(r.rollNo), studentName: r.studentName });
+      rollMap.set(r.sectionId, list);
+    }
+  }
+
   const classOptions: ClassOption[] = allClasses.map((cls) => {
     const secList = allSections
       .filter((s) => s.classId === cls.id)
@@ -50,6 +77,7 @@ export default async function NewStudentAdmissionPage() {
         name: s.name,
         capacity: s.capacity || 40,
         enrolledCount: countMap.get(s.id) || 0,
+        occupiedRolls: rollMap.get(s.id) || [],
       }));
     return {
       id: cls.id,

@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Wallet,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCurrency, formatPhone } from "@/lib/utils";
+import { formatCurrency, formatPhone, formatDate } from "@/lib/utils";
 import { collectFeePaymentPOS } from "@/actions/finance";
 import { LockOverrideDialog } from "@/components/layout/lock-override-dialog";
 
@@ -64,6 +65,139 @@ interface PosClientProps {
   yearName: string;
 }
 
+function PosReceiptSlip({
+  copyLabel,
+  receipt,
+  student,
+  yearName,
+  tendered,
+  change,
+}: {
+  copyLabel: string;
+  receipt: any;
+  student: PosStudentInfo;
+  yearName: string;
+  tendered?: number;
+  change?: number;
+}) {
+  const allocations: Array<{ feeHeadName: string; allocatedAmount: number }> =
+    Array.isArray(receipt.allocationsJson) ? receipt.allocationsJson : [];
+
+  const amountReceivedNum = parseFloat(receipt.amountReceived) || 0;
+
+  return (
+    <div className="border border-slate-900 rounded p-4 text-xs font-sans text-slate-900 bg-white space-y-3">
+      {/* School Header */}
+      <div className="flex items-start justify-between border-b-2 border-slate-900 pb-2">
+        <div>
+          <h2 className="text-sm font-black tracking-tight uppercase text-navy-950">
+            Crescent Matriculation Higher Secondary School
+          </h2>
+          <p className="text-[10px] text-slate-600">
+            Affiliated to Tamil Nadu State Matriculation Board • Code: CMS-CHENNAI
+          </p>
+          <p className="text-[9px] text-slate-500">
+            High Road, Chennai - 600045 • Phone: +91 44 2233 4455
+          </p>
+        </div>
+        <div className="text-right">
+          <span className="inline-block border border-slate-900 px-2 py-0.5 font-bold font-mono text-[10px] uppercase bg-slate-100">
+            {copyLabel}
+          </span>
+          <div className="text-[10px] font-mono text-slate-600 mt-1">
+            Academic Year: {yearName}
+          </div>
+        </div>
+      </div>
+
+      {/* Meta Grid */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] border-b border-slate-200 pb-2">
+        <div>
+          <span className="text-slate-500">Receipt No: </span>
+          <span className="font-mono font-bold text-slate-900">{receipt.receiptNo}</span>
+        </div>
+        <div className="text-right">
+          <span className="text-slate-500">Date: </span>
+          <span className="font-bold">{formatDate(receipt.createdAt || new Date())}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">Student Name: </span>
+          <span className="font-bold text-slate-900">{student.name}</span>
+        </div>
+        <div className="text-right">
+          <span className="text-slate-500">Admission No: </span>
+          <span className="font-mono font-bold">{student.admissionNo}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">Class & Section: </span>
+          <span className="font-bold">{student.className}</span>
+        </div>
+        <div className="text-right">
+          <span className="text-slate-500">Payment Mode: </span>
+          <span className="font-bold font-mono">{receipt.paymentMode}</span>
+        </div>
+        {student.parentName && (
+          <div>
+            <span className="text-slate-500">Parent / Guardian: </span>
+            <span>{student.parentName} ({student.parentPhone})</span>
+          </div>
+        )}
+        {receipt.chequeOrTxnRef && (
+          <div className="text-right">
+            <span className="text-slate-500">Instrument / Txn Ref: </span>
+            <span className="font-mono font-medium">{receipt.chequeOrTxnRef}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Itemized Fee Particulars */}
+      <div className="space-y-1 py-1">
+        <div className="flex justify-between text-[11px] font-bold border-b border-slate-300 pb-1 text-slate-800">
+          <span>Fee Particulars</span>
+          <span>Amount Paid</span>
+        </div>
+        {allocations.length > 0 ? (
+          allocations.map((a, i) => (
+            <div key={i} className="flex justify-between text-[11px] py-0.5">
+              <span className="text-slate-700">{a.feeHeadName}</span>
+              <span className="font-mono font-medium">{formatCurrency(a.allocatedAmount)}</span>
+            </div>
+          ))
+        ) : (
+          <div className="flex justify-between text-[11px] py-0.5">
+            <span className="text-slate-700">Tuition & Term Academic Fees</span>
+            <span className="font-mono font-medium">{formatCurrency(amountReceivedNum)}</span>
+          </div>
+        )}
+
+        <div className="flex justify-between text-xs font-black border-t-2 border-slate-900 pt-1.5 text-slate-900">
+          <span>TOTAL AMOUNT PAID</span>
+          <span className="font-mono text-sm">{formatCurrency(amountReceivedNum)}</span>
+        </div>
+
+        {tendered !== undefined && tendered > amountReceivedNum && (
+          <div className="flex justify-between text-[10px] text-slate-600 pt-1 border-t border-dotted border-slate-300">
+            <span>Cash Tendered by Parent: {formatCurrency(tendered)}</span>
+            <span className="font-bold text-slate-900">Cash Change Returned: {formatCurrency(change || 0)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Signatures */}
+      <div className="pt-6 flex justify-between text-[10px] text-slate-500">
+        <div className="text-center">
+          <div className="w-28 border-b border-slate-400 mb-1"></div>
+          <span>Parent / Depositor</span>
+        </div>
+        <div className="text-center">
+          <div className="w-36 border-b border-slate-400 mb-1"></div>
+          <span>Cashier / Authorized Signatory</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CashierPosClient({
   initialStudent,
   initialFeeItems,
@@ -92,6 +226,7 @@ export function CashierPosClient({
   const [txnRef, setTxnRef] = React.useState("");
   const [printDualCopy, setPrintDualCopy] = React.useState(true);
   const [receiptGenerated, setReceiptGenerated] = React.useState<any | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [overrideModalOpen, setOverrideModalOpen] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{
@@ -167,6 +302,9 @@ export function CashierPosClient({
       return;
     }
 
+    const actualPayAmount = totalDue > 0 ? Math.min(amt, totalDue) : amt;
+    const changeToReturn = amt > actualPayAmount ? amt - actualPayAmount : 0;
+
     if (paymentMode === "CHEQUE" && !txnRef.trim()) {
       setFeedback({
         type: "warning",
@@ -186,18 +324,20 @@ export function CashierPosClient({
       const res = await collectFeePaymentPOS({
         academicYearId,
         studentId: student.id,
-        amountReceived: amt,
+        amountReceived: actualPayAmount,
         paymentMode,
         chequeOrTxnRef: txnRef || undefined,
         idempotencyKey,
-        notes: `POS cashier collection for ${student.name}`,
+        notes: `POS cashier collection for ${student.name}${changeToReturn > 0 ? ` (Tendered: ₹${amt.toFixed(2)}, Change: ₹${changeToReturn.toFixed(2)})` : ""}`,
       });
 
       if (res.success && res.receipt) {
         setReceiptGenerated(res.receipt);
+        setShowReceiptModal(true);
+        const changeMsg = changeToReturn > 0 ? ` • Return ₹${changeToReturn.toFixed(2)} cash change to parent` : "";
         setFeedback({
           type: "success",
-          message: `Payment of ₹${amt.toFixed(2)} processed successfully! Receipt: ${res.receipt.receiptNo}`,
+          message: `Payment of ₹${actualPayAmount.toFixed(2)} processed successfully!${changeMsg} Receipt: ${res.receipt.receiptNo}`,
         });
         router.refresh();
       } else {
@@ -233,6 +373,7 @@ export function CashierPosClient({
 
       if (res.success && res.receipt) {
         setReceiptGenerated(res.receipt);
+        setShowReceiptModal(true);
         setFeedback({
           type: "success",
           message: `Super-Admin override payment of ₹${amt.toFixed(2)} recorded! Receipt: ${res.receipt.receiptNo}`,
@@ -249,8 +390,10 @@ export function CashierPosClient({
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
-      {/* Top Header */}
+    <div className="max-w-5xl mx-auto">
+      {/* SCREEN VIEW ONLY: The interactive POS workspace is hidden during print */}
+      <div className="space-y-4 print:hidden">
+        {/* Top Header */}
       <div className="flex items-center justify-between border-b border-slate-200 pb-3">
         <div className="flex items-center gap-3">
           <Link href="/finance">
@@ -353,7 +496,7 @@ export function CashierPosClient({
           {/* Left Col: Student Profile & Invoice Breakdown (Span 2) */}
           <div className="md:col-span-2 space-y-4">
             {/* Student ID Card */}
-            <div className="bg-white border border-slate-200 rounded p-4 flex items-center justify-between shadow-sm">
+            <div className="bg-white border border-slate-200 rounded p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                   Target Student
@@ -364,15 +507,24 @@ export function CashierPosClient({
                 <div className="text-xs text-slate-500 font-tabular">
                   {student.admissionNo} • {student.className} • Parent: {student.parentName} ({formatPhone(student.parentPhone)})
                 </div>
+                <div className="mt-1.5">
+                  <Link
+                    href={`/students/${student.id}/ledger`}
+                    target="_blank"
+                    className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 inline-flex items-center gap-1 hover:underline"
+                  >
+                    <Receipt className="h-3 w-3" />
+                    <span>View Transaction History & Past Receipts &rarr;</span>
+                  </Link>
+                </div>
               </div>
 
               <div className="text-right">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                  Wallet Balance
+                  Total Outstanding
                 </span>
-                <div className="text-sm font-bold font-tabular text-emerald-700 flex items-center gap-1 justify-end">
-                  <Wallet className="h-3.5 w-3.5" />
-                  {formatCurrency(student.walletBalance)}
+                <div className={`text-base font-bold font-tabular flex items-center gap-1 justify-end ${totalDue > 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                  {formatCurrency(totalDue)}
                 </div>
               </div>
             </div>
@@ -450,10 +602,19 @@ export function CashierPosClient({
                 className="font-tabular text-lg font-bold text-slate-900 mt-1"
                 placeholder="0.00"
               />
-              {parseFloat(paymentAmount) > totalDue && (
-                <p className="text-[11px] text-emerald-700 mt-1 font-medium">
-                  + {formatCurrency(parseFloat(paymentAmount) - totalDue)} excess will be credited to Student Wallet Advance!
-                </p>
+              {parseFloat(paymentAmount) > totalDue && totalDue > 0 && (
+                <div className="mt-2 p-2.5 bg-emerald-50 rounded border border-emerald-200 text-xs space-y-1">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Invoice Dues:</span>
+                    <span className="font-tabular font-bold">{formatCurrency(totalDue)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-emerald-800 pt-1 border-t border-emerald-200">
+                    <span>Cash Change to Return:</span>
+                    <span className="font-tabular text-sm">
+                      {formatCurrency(parseFloat(paymentAmount) - totalDue)}
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -511,7 +672,7 @@ export function CashierPosClient({
               className="w-full bg-navy-900 hover:bg-navy-800 text-white font-bold py-2.5 gap-2"
             >
               <Receipt className="h-4 w-4" />
-              <span>{isProcessing ? "Processing..." : `Print Receipt (${formatCurrency(parseFloat(paymentAmount) || 0)})`}</span>
+              <span>{isProcessing ? "Processing..." : `Print Receipt (${formatCurrency(totalDue > 0 ? Math.min(parseFloat(paymentAmount) || 0, totalDue) : (parseFloat(paymentAmount) || 0))})`}</span>
             </Button>
           </div>
         </div>
@@ -523,45 +684,136 @@ export function CashierPosClient({
         </div>
       )}
 
-      {/* Generated Receipt Modal / Dual Print Preview */}
-      {receiptGenerated && (
-        <div className="p-6 bg-emerald-50 border-2 border-emerald-500 rounded-lg space-y-4 animate-in fade-in">
-          <div className="flex items-center justify-between border-b border-emerald-200 pb-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+        {/* Generated Receipt Action Bar */}
+        {receiptGenerated && (
+          <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
               <div>
-                <h3 className="text-base font-bold text-emerald-950">
+                <span className="font-bold text-xs text-emerald-950 block">
                   Payment Recorded & Immutable Receipt Issued
-                </h3>
-                <span className="font-mono text-xs font-bold text-emerald-800">
-                  Receipt No: {receiptGenerated.receiptNo}
+                </span>
+                <span className="font-mono text-[11px] text-emerald-800">
+                  Receipt: {receiptGenerated.receiptNo} • Amount: {formatCurrency(parseFloat(receiptGenerated.amountReceived))} ({receiptGenerated.paymentMode})
                 </span>
               </div>
             </div>
 
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => window.print()}
-              className="bg-white gap-1.5 text-xs font-semibold"
-            >
-              <Printer className="h-4 w-4" />
-              <span>Print {printDualCopy ? "Dual Copy (Office + Student)" : "Receipt"}</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {student && (
+                <Link href={`/students/${student.id}/ledger`}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1.5 h-8 font-semibold border-emerald-400 text-emerald-900 hover:bg-emerald-100"
+                  >
+                    <Receipt className="h-3.5 w-3.5" />
+                    <span>View Student Ledger</span>
+                  </Button>
+                </Link>
+              )}
+              <Button
+                size="sm"
+                onClick={() => setShowReceiptModal(true)}
+                className="bg-navy-900 text-white text-xs gap-1.5 h-8 font-semibold shadow-sm"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>View & Print Receipt Slip</span>
+              </Button>
+            </div>
           </div>
+        )}
+      </div>
 
-          <div className="grid grid-cols-2 gap-4 text-xs font-tabular">
-            <div>
-              <span className="text-slate-500">Amount Received: </span>
-              <span className="font-bold text-slate-900">
-                {formatCurrency(parseFloat(receiptGenerated.amountReceived))}
-              </span>
+      {/* ON-SCREEN OFFICIAL RECEIPT PREVIEW MODAL (print:hidden) */}
+      {receiptGenerated && student && showReceiptModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 print:hidden">
+          <div className="bg-white rounded-lg shadow-2xl border border-slate-300 w-full max-w-xl max-h-[92vh] overflow-y-auto p-5 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <Printer className="h-4 w-4 text-navy-900" />
+                <h3 className="text-sm font-bold text-slate-900">Official Fee Receipt Slip</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => window.print()}
+                  className="h-8 text-xs bg-navy-900 text-white font-semibold gap-1.5"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>Print Document</span>
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setShowReceiptModal(false)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            <div>
-              <span className="text-slate-500">Payment Mode: </span>
-              <span className="font-bold text-slate-900">{receiptGenerated.paymentMode}</span>
-            </div>
+
+            <PosReceiptSlip
+              copyLabel={printDualCopy ? "OFFICE COPY (ACCOUNTS)" : "OFFICIAL FEE RECEIPT"}
+              receipt={receiptGenerated}
+              student={student}
+              yearName={yearName}
+              tendered={parseFloat(paymentAmount) || 0}
+              change={Math.max(0, (parseFloat(paymentAmount) || 0) - parseFloat(receiptGenerated.amountReceived))}
+            />
+
+            {printDualCopy && (
+              <>
+                <div className="relative text-center my-3 select-none">
+                  <div className="border-t border-dashed border-slate-400 w-full absolute top-1/2"></div>
+                  <span className="relative bg-white px-2 text-[10px] text-slate-500 font-mono">
+                    ✂ - - - - - - - - CUT HERE - - - - - - - - ✂
+                  </span>
+                </div>
+                <PosReceiptSlip
+                  copyLabel="STUDENT / PARENT COPY"
+                  receipt={receiptGenerated}
+                  student={student}
+                  yearName={yearName}
+                  tendered={parseFloat(paymentAmount) || 0}
+                  change={Math.max(0, (parseFloat(paymentAmount) || 0) - parseFloat(receiptGenerated.amountReceived))}
+                />
+              </>
+            )}
           </div>
+        </div>
+      )}
+
+      {/* PRINT-ONLY VIEW: Renders exclusively when browser triggers window.print() */}
+      {receiptGenerated && student && (
+        <div className="hidden print:block w-full max-w-2xl mx-auto space-y-6 print:m-0 print:p-0 text-black bg-white">
+          <PosReceiptSlip
+            copyLabel={printDualCopy ? "OFFICE COPY (ACCOUNTS)" : "OFFICIAL FEE RECEIPT"}
+            receipt={receiptGenerated}
+            student={student}
+            yearName={yearName}
+            tendered={parseFloat(paymentAmount) || 0}
+            change={Math.max(0, (parseFloat(paymentAmount) || 0) - parseFloat(receiptGenerated.amountReceived))}
+          />
+
+          {printDualCopy && (
+            <>
+              <div className="relative text-center my-4 select-none">
+                <div className="border-t-2 border-dashed border-slate-500 w-full absolute top-1/2"></div>
+                <span className="relative bg-white px-3 text-[10px] text-slate-500 font-mono">
+                  ✂ - - - - - - - - - - - - - - - - CUT HERE - - - - - - - - - - - - - - - - ✂
+                </span>
+              </div>
+              <PosReceiptSlip
+                copyLabel="STUDENT / PARENT COPY"
+                receipt={receiptGenerated}
+                student={student}
+                yearName={yearName}
+                tendered={parseFloat(paymentAmount) || 0}
+                change={Math.max(0, (parseFloat(paymentAmount) || 0) - parseFloat(receiptGenerated.amountReceived))}
+              />
+            </>
+          )}
         </div>
       )}
 

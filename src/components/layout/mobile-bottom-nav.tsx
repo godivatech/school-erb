@@ -3,39 +3,73 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CalendarCheck, FileSpreadsheet, Bell } from "lucide-react";
+import {
+  Home,
+  CalendarCheck,
+  FileSpreadsheet,
+  Bell,
+  Users,
+  Bus,
+  Clock,
+  CreditCard,
+  ReceiptIndianRupee,
+  UsersRound,
+  GraduationCap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAcademicYear } from "./academic-year-context";
+import { Role } from "@/lib/guards";
 
-const MOBILE_TABS = [
-  {
-    name: "Home",
-    href: "/",
-    icon: Home,
-  },
-  {
-    name: "Attendance",
-    href: "/attendance",
-    icon: CalendarCheck,
-  },
-  {
-    name: "Marks",
-    href: "/exams",
-    icon: FileSpreadsheet,
-  },
-  {
-    name: "Notices",
-    href: "/notices",
-    icon: Bell,
-  },
-];
+interface MobileTabItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+}
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { currentUser } = useAcademicYear();
+  const role = currentUser.role;
+
+  let tabs: MobileTabItem[] = [];
+
+  if (role === "PARENT") {
+    tabs = [
+      { name: "My Children", href: "/parent", icon: Users },
+      { name: "Transport", href: "/transport", icon: Bus },
+      { name: "Notices", href: "/notices", icon: Bell },
+    ];
+  } else if (role === "TEACHER") {
+    tabs = [
+      { name: "Attendance", href: "/attendance", icon: CalendarCheck },
+      { name: "Marks", href: "/exams", icon: FileSpreadsheet },
+      { name: "Timetable", href: "/timetable", icon: Clock },
+      { name: "Notices", href: "/notices", icon: Bell },
+    ];
+  } else if (role === "ACCOUNTANT") {
+    tabs = [
+      { name: "Overview", href: "/", icon: Home },
+      { name: "Fee POS", href: "/finance/pos", icon: CreditCard },
+      { name: "Ledger", href: "/finance", icon: ReceiptIndianRupee },
+      { name: "Payroll", href: "/payroll", icon: UsersRound },
+    ];
+  } else {
+    // SUPER_ADMIN, PRINCIPAL
+    tabs = [
+      { name: "Home", href: "/", icon: Home },
+      { name: "Students", href: "/students", icon: GraduationCap },
+      { name: "Fee POS", href: "/finance/pos", icon: CreditCard },
+      { name: "Attendance", href: "/attendance", icon: CalendarCheck },
+    ];
+  }
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 block md:hidden bg-white border-t border-slate-200 shadow-lg">
-      <div className="grid grid-cols-4 h-14">
-        {MOBILE_TABS.map((tab) => {
+      <div
+        className="grid h-14"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+      >
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive =
             tab.href === "/"

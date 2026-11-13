@@ -111,6 +111,17 @@ export function AcademicYearProvider({
         });
       }
       await switchUserRole(role);
+
+      // Auto-route to dedicated role landing page to prevent unauthorized view overlap
+      if (role === "PARENT") {
+        router.push("/parent");
+      } else if (role === "TEACHER") {
+        router.push("/attendance");
+      } else if (role === "ACCOUNTANT") {
+        router.push("/finance");
+      } else {
+        router.push("/");
+      }
       router.refresh();
     } catch (err) {
       console.error("Failed to switch role:", err);

@@ -18,6 +18,7 @@ import {
   DailyAbsenteeStudent,
 } from "./attendance-client";
 import { getActiveContext } from "@/lib/context";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,12 @@ export default async function AttendancePage({
 
   // 1. Fetch active context from cookies
   const context = await getActiveContext();
+
+  // Role guard: Parents have attendance in their Parent Portal
+  if (context.user.role === "PARENT") {
+    redirect("/parent");
+  }
+
   const yearId = context.academicYearId;
   const schoolId = context.schoolId;
   const isLocked = context.isLocked;

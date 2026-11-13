@@ -14,6 +14,7 @@ import {
 import { eq, and, or, inArray, asc } from "drizzle-orm";
 import { CashierPosClient, PosStudentInfo, PosFeeItem } from "./pos-client";
 import { getActiveContext } from "@/lib/context";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,15 @@ export default async function CashierPosPage({
 
   // 1. Fetch active context from cookies
   const context = await getActiveContext();
+
+  // Role guard: Only Accountants and Admins can collect fees
+  if (context.user.role === "PARENT") {
+    redirect("/parent");
+  }
+  if (context.user.role === "TEACHER") {
+    redirect("/attendance");
+  }
+
   const yearId = context.academicYearId;
   const schoolId = context.schoolId;
   const isLocked = context.isLocked;

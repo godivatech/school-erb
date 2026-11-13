@@ -21,6 +21,8 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Role } from "@/lib/guards";
+import { useAcademicYear } from "./academic-year-context";
 
 interface NavItem {
   title: string;
@@ -28,6 +30,7 @@ interface NavItem {
   icon: React.ElementType;
   badge?: string;
   badgeVariant?: "primary" | "warning" | "danger" | "neutral";
+  roles?: Role[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -35,17 +38,20 @@ const NAV_ITEMS: NavItem[] = [
     title: "Command Center",
     href: "/",
     icon: LayoutDashboard,
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "ACCOUNTANT"],
   },
   {
     title: "Students & SIS",
     href: "/students",
     icon: GraduationCap,
     badge: "1,248",
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "ACCOUNTANT", "TEACHER"],
   },
   {
     title: "Academic Structure",
     href: "/academics",
     icon: CalendarDays,
+    roles: ["SUPER_ADMIN", "PRINCIPAL"],
   },
   {
     title: "Attendance Grid",
@@ -53,11 +59,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: UserCheck,
     badge: "96%",
     badgeVariant: "neutral",
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "TEACHER"],
   },
   {
     title: "Timetable & Clashes",
     href: "/timetable",
     icon: Clock,
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "TEACHER"],
   },
   {
     title: "Fee POS & Ledger",
@@ -65,21 +73,25 @@ const NAV_ITEMS: NavItem[] = [
     icon: ReceiptIndianRupee,
     badge: "POS",
     badgeVariant: "primary",
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "ACCOUNTANT"],
   },
   {
     title: "Exams & Marks",
     href: "/exams",
     icon: FileSpreadsheet,
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "TEACHER"],
   },
   {
     title: "Staff & Payroll",
     href: "/payroll",
     icon: UsersRound,
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "ACCOUNTANT"],
   },
   {
     title: "Transport Routes",
     href: "/transport",
     icon: Bus,
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "TEACHER", "PARENT"],
   },
   {
     title: "Parent Portal",
@@ -87,16 +99,19 @@ const NAV_ITEMS: NavItem[] = [
     icon: Users,
     badge: "PWA",
     badgeVariant: "neutral",
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "PARENT"],
   },
   {
     title: "Smart Notices",
     href: "/notices",
     icon: BellRing,
+    roles: ["SUPER_ADMIN", "PRINCIPAL", "ACCOUNTANT", "TEACHER", "PARENT"],
   },
   {
     title: "Audit Trail",
     href: "/audit",
     icon: History,
+    roles: ["SUPER_ADMIN", "PRINCIPAL"],
   },
 ];
 
@@ -107,6 +122,11 @@ interface DesktopSidebarProps {
 
 export function DesktopSidebar({ isCollapsed, onToggle }: DesktopSidebarProps) {
   const pathname = usePathname();
+  const { currentUser } = useAcademicYear();
+
+  const visibleNavItems = NAV_ITEMS.filter((item) =>
+    !item.roles || item.roles.includes(currentUser.role)
+  );
 
   return (
     <aside
@@ -147,7 +167,7 @@ export function DesktopSidebar({ isCollapsed, onToggle }: DesktopSidebarProps) {
 
       {/* Nav items list */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
-        {NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive =
             item.href === "/"

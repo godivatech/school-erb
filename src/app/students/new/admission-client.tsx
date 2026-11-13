@@ -24,17 +24,33 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { admitStudentWithFamilyLink, lookupFamilyByPhone } from "@/actions/students";
 
+export interface OccupiedRoll {
+  rollNo: number;
+  studentName: string;
+}
+
 export interface SectionOption {
   id: string;
   name: string;
   capacity?: number;
   enrolledCount?: number;
+  occupiedRolls?: OccupiedRoll[];
 }
 
 export interface ClassOption {
   id: string;
   name: string;
   sections: SectionOption[];
+}
+
+function computeNextAvailableRoll(occupiedRolls?: OccupiedRoll[]): number {
+  if (!occupiedRolls || occupiedRolls.length === 0) return 1;
+  const taken = new Set(occupiedRolls.map((r) => r.rollNo));
+  let candidate = 1;
+  while (taken.has(candidate)) {
+    candidate++;
+  }
+  return candidate;
 }
 
 interface AdmissionClientProps {
@@ -58,7 +74,7 @@ export function NewStudentAdmissionClient({
 
   const defaultClass = classes[0];
   const defaultSection = defaultClass?.sections[0];
-  const initialRollNo = String((defaultSection?.enrolledCount || 0) + 1);
+  const initialRollNo = String(computeNextAvailableRoll(defaultSection?.occupiedRolls));
 
   const [formData, setFormData] = React.useState({
     admissionNo: defaultAdmNo,
@@ -134,11 +150,22 @@ export function NewStudentAdmissionClient({
   const isSectionFull = sectionEnrolled >= sectionCapacity;
   const availableSeats = Math.max(0, sectionCapacity - sectionEnrolled);
 
+  // Roll Number Availability & Duplicate Detection
+  const rollOccupant = React.useMemo(() => {
+    const rNo = parseInt(formData.rollNo);
+    if (!rNo || !selectedSection?.occupiedRolls) return null;
+    return selectedSection.occupiedRolls.find((r) => r.rollNo === rNo) || null;
+  }, [formData.rollNo, selectedSection]);
+
+  const nextAvailableRoll = React.useMemo(() => {
+    return computeNextAvailableRoll(selectedSection?.occupiedRolls);
+  }, [selectedSection]);
+
   // Handle Class Change with Roll Number Auto-Suggestion
   const handleClassChange = (classId: string) => {
     const cls = classes.find((c) => c.id === classId);
     const firstSec = cls?.sections[0];
-    const nextRoll = String((firstSec?.enrolledCount || 0) + 1);
+    const nextRoll = String(computeNextAvailableRoll(firstSec?.occupiedRolls));
 
     setFormData((prev) => ({
       ...prev,
@@ -151,7 +178,7 @@ export function NewStudentAdmissionClient({
   // Handle Section Change with Roll Number Auto-Suggestion
   const handleSectionChange = (sectionId: string) => {
     const sec = selectedClass?.sections.find((s) => s.id === sectionId);
-    const nextRoll = String((sec?.enrolledCount || 0) + 1);
+    const nextRoll = String(computeNextAvailableRoll(sec?.occupiedRolls));
 
     setFormData((prev) => ({
       ...prev,
@@ -268,6 +295,10 @@ export function NewStudentAdmissionClient({
       return `Selected Section ${selectedSection?.name} is full (${sectionCapacity}/${sectionCapacity} seats). Please select another section.`;
     }
 
+    if (rollOccupant) {
+      return `Roll Number #${formData.rollNo} is already assigned to ${rollOccupant.studentName} in Section ${selectedSection?.name}. Next available roll number is #${nextAvailableRoll}.`;
+    }
+
     return null;
   };
 
@@ -359,6 +390,24 @@ export function NewStudentAdmissionClient({
           <Badge variant={isLocked ? "warning" : "success"} className="text-xs font-mono">
             {academicYearName} {isLocked ? "[LOCKED]" : "[ACTIVE]"}
           </Badge>
+          <Button
+            type="submit"
+            form="admission-form"
+            disabled={isLocked || isSubmitting || isSectionFull}
+            className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1.5 h-8 px-3 shadow-xs disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Submit Admission</span>
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -456,7 +505,7 @@ export function NewStudentAdmissionClient({
       )}
 
       {/* Main Admission Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form id="admission-form" onSubmit={handleSubmit} className="space-y-6">
         {/* Section 1: Academic & Admission Details */}
         <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
@@ -624,19 +673,47 @@ export function NewStudentAdmissionClient({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-700 block">
-                Roll Number in Section
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700 block">
+                  Roll Number in Section
+                </label>
+                {rollOccupant && (
+                  <Badge variant="danger" className="text-[9px] px-1.5 py-0">
+                    Already Assigned
+                  </Badge>
+                )}
+              </div>
               <Input
                 type="number"
                 min={1}
                 value={formData.rollNo}
                 onChange={(e) => setFormData({ ...formData, rollNo: e.target.value })}
-                className="text-xs mt-1 font-tabular"
+                className={`text-xs mt-1 font-tabular ${
+                  rollOccupant
+                    ? "border-red-400 bg-red-50/40 text-red-900 focus-visible:ring-red-400"
+                    : ""
+                }`}
               />
-              <span className="text-[10px] text-slate-400 mt-0.5 block">
-                Auto-assigned next roll number
-              </span>
+              {rollOccupant ? (
+                <div className="mt-1 space-y-1">
+                  <div className="text-[10px] text-red-600 font-medium flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 shrink-0 text-red-600" />
+                    <span>Assigned to {rollOccupant.studentName}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, rollNo: String(nextAvailableRoll) })}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 transition-colors"
+                  >
+                    <span>Use Next Free (#{nextAvailableRoll})</span>
+                  </button>
+                </div>
+              ) : (
+                <span className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                  <span>Available (Next free: #{nextAvailableRoll})</span>
+                </span>
+              )}
             </div>
 
             <div className="sm:col-span-3">
@@ -791,7 +868,7 @@ export function NewStudentAdmissionClient({
         </div>
 
         {/* Submit Bar */}
-        <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+        <div className="flex items-center justify-between border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-lg border shadow-xs">
           <Link href="/students">
             <Button type="button" variant="outline" className="text-xs">
               Cancel & Return
@@ -801,7 +878,7 @@ export function NewStudentAdmissionClient({
           <Button
             type="submit"
             disabled={isLocked || isSubmitting || isSectionFull}
-            className="text-xs bg-navy-900 text-white font-bold gap-2 px-6 hover:bg-navy-800 disabled:opacity-50"
+            className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2 px-6 h-9 shadow-sm disabled:opacity-50"
           >
             {isSubmitting ? (
               <>
@@ -810,8 +887,8 @@ export function NewStudentAdmissionClient({
               </>
             ) : (
               <>
-                <Save className="h-4 w-4" />
-                <span>Complete Admission</span>
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Submit & Complete Admission</span>
               </>
             )}
           </Button>

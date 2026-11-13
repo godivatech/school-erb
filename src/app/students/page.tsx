@@ -7,17 +7,25 @@ import {
   classes,
   sections,
   academicYears,
+  feeInvoices,
 } from "@/db/schema";
 import { eq, and, sql, asc } from "drizzle-orm";
 import { StudentsClient, StudentListItem } from "./students-client";
 
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
 import { getActiveContext } from "@/lib/context";
 
 export default async function StudentsDirectoryPage() {
   // 1. Fetch active context from cookies
   const context = await getActiveContext();
+
+  // Role guard: Parents have their own children in Parent Portal
+  if (context.user.role === "PARENT") {
+    redirect("/parent");
+  }
+
   const yearId = context.academicYearId;
   const schoolId = context.schoolId;
 
@@ -76,6 +84,33 @@ export default async function StudentsDirectoryPage() {
     siblingCountMap.set(f.familyId, Math.max(0, Number(f.count) - 1));
   }
 
+  // 3b. Fetch Fee Invoices summary per student for active academic year
+  const invoiceSummaries = await db
+    .select({
+      studentId: feeInvoices.studentId,
+      totalInvoiced: sql<number>`coalesce(sum(${feeInvoices.netAmount}), 0)`,
+      totalPaid: sql<number>`coalesce(sum(${feeInvoices.paidAmount}), 0)`,
+    })
+    .from(feeInvoices)
+    .where(
+      and(
+        eq(feeInvoices.schoolId, schoolId),
+        eq(feeInvoices.academicYearId, yearId)
+      )
+    )
+    .groupBy(feeInvoices.studentId);
+
+  const studentFeeMap = new Map<string, { totalInvoiced: number; totalPaid: number; pendingDues: number }>();
+  for (const inv of invoiceSummaries) {
+    const invoiced = Number(inv.totalInvoiced) || 0;
+    const paid = Number(inv.totalPaid) || 0;
+    studentFeeMap.set(inv.studentId, {
+      totalInvoiced: invoiced,
+      totalPaid: paid,
+      pendingDues: Math.max(0, invoiced - paid),
+    });
+  }
+
   // 4. Fetch Classes and Sections for filtering & section transfers
   const allClasses = await db
     .select({ id: classes.id, name: classes.name, order: classes.numericOrder })
@@ -88,31 +123,37 @@ export default async function StudentsDirectoryPage() {
     .from(sections)
     .where(eq(sections.schoolId, schoolId));
 
-  const studentList: StudentListItem[] = rows.map((r) => ({
-    id: r.id,
-    admissionNo: r.admissionNo,
-    firstName: r.firstName,
-    lastName: r.lastName,
-    classId: r.classId || "",
-    className: r.className || "Unassigned",
-    sectionId: r.sectionId || "",
-    sectionName: r.sectionName || "A",
-    rollNo: r.rollNo || 0,
-    gender: r.gender,
-    bloodGroup: r.bloodGroup,
-    medicalFlags: r.medicalFlags,
-    emergencyContact: r.emergencyContact,
-    parentName: r.parentName,
-    parentPhone: r.parentPhone,
-    address: r.address || "",
-    walletBalance: parseFloat(r.walletBalance || "0"),
-    status: r.status as any,
-    familyId: r.familyId,
-    photoUrl: r.photoUrl,
-    nationalId: r.nationalId,
-    siblingCount: siblingCountMap.get(r.familyId) || 0,
-    dob: r.dob,
-  }));
+  const studentList: StudentListItem[] = rows.map((r) => {
+    const feeInfo = studentFeeMap.get(r.id) || { totalInvoiced: 0, totalPaid: 0, pendingDues: 0 };
+    return {
+      id: r.id,
+      admissionNo: r.admissionNo,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      classId: r.classId || "",
+      className: r.className || "Unassigned",
+      sectionId: r.sectionId || "",
+      sectionName: r.sectionName || "A",
+      rollNo: r.rollNo || 0,
+      gender: r.gender,
+      bloodGroup: r.bloodGroup,
+      medicalFlags: r.medicalFlags,
+      emergencyContact: r.emergencyContact,
+      parentName: r.parentName,
+      parentPhone: r.parentPhone,
+      address: r.address || "",
+      walletBalance: parseFloat(r.walletBalance || "0"),
+      totalInvoiced: feeInfo.totalInvoiced,
+      totalPaid: feeInfo.totalPaid,
+      pendingDues: feeInfo.pendingDues,
+      status: r.status as any,
+      familyId: r.familyId,
+      photoUrl: r.photoUrl,
+      nationalId: r.nationalId,
+      siblingCount: siblingCountMap.get(r.familyId) || 0,
+      dob: r.dob,
+    };
+  });
 
   return (
     <StudentsClient

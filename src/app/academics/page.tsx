@@ -20,7 +20,23 @@ import {
 
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
+import { getActiveContext } from "@/lib/context";
+
 export default async function AcademicsPage() {
+  const context = await getActiveContext();
+
+  // Role guard: Only Super Admin and Principal
+  if (context.user.role === "PARENT") {
+    redirect("/parent");
+  }
+  if (context.user.role === "TEACHER") {
+    redirect("/attendance");
+  }
+  if (context.user.role === "ACCOUNTANT") {
+    redirect("/finance");
+  }
+
   // 1. Fetch all academic years
   const rawYears = await db
     .select()

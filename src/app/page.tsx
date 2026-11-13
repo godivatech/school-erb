@@ -43,6 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { redirect } from "next/navigation";
 
 import { getActiveContext } from "@/lib/context";
 
@@ -51,6 +52,15 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   // 1. Fetch active context from cookies
   const context = await getActiveContext();
+
+  // Role-based view protection
+  if (context.user.role === "PARENT") {
+    redirect("/parent");
+  }
+  if (context.user.role === "TEACHER") {
+    redirect("/attendance");
+  }
+
   const yearId = context.academicYearId;
   const schoolId = context.schoolId;
   const todayStr = new Date().toISOString().split("T")[0];
