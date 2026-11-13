@@ -202,3 +202,4 @@ export default async function StudentLedgerPage({
 
   return <StudentLedgerClient initialData={data} />;
 }
+
