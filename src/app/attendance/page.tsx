@@ -109,17 +109,27 @@ export default async function AttendancePage({
     studentId: string;
     leaveType: string;
     reason: string;
+    startDate: string;
+    endDate: string;
+    status: string;
+    studentName?: string;
   }> = [];
 
   if (studentIds.length > 0) {
-    activeLeaves = await db
+    const rawSectionLeaves = await db
       .select({
         id: studentLeaves.id,
         studentId: studentLeaves.studentId,
         leaveType: studentLeaves.leaveType,
         reason: studentLeaves.reason,
+        startDate: studentLeaves.startDate,
+        endDate: studentLeaves.endDate,
+        status: studentLeaves.status,
+        firstName: students.firstName,
+        lastName: students.lastName,
       })
       .from(studentLeaves)
+      .innerJoin(students, eq(studentLeaves.studentId, students.id))
       .where(
         and(
           eq(studentLeaves.schoolId, schoolId),
@@ -127,6 +137,17 @@ export default async function AttendancePage({
           sql`${studentLeaves.startDate} <= ${todayStr} AND ${studentLeaves.endDate} >= ${todayStr}`
         )
       );
+
+    activeLeaves = rawSectionLeaves.map((l) => ({
+      id: l.id,
+      studentId: l.studentId,
+      leaveType: l.leaveType,
+      reason: l.reason,
+      startDate: l.startDate,
+      endDate: l.endDate,
+      status: l.status,
+      studentName: `${l.firstName} ${l.lastName}`,
+    }));
   }
 
   // 5. Merge into current section roster
@@ -181,10 +202,28 @@ export default async function AttendancePage({
     .select({
       id: studentLeaves.id,
       studentId: studentLeaves.studentId,
+      studentName: sql<string>`CONCAT(${students.firstName}, ' ', ${students.lastName})`,
+      admissionNo: students.admissionNo,
+      className: classes.name,
+      sectionName: sections.name,
+      sectionId: sections.id,
       leaveType: studentLeaves.leaveType,
       reason: studentLeaves.reason,
+      startDate: studentLeaves.startDate,
+      endDate: studentLeaves.endDate,
+      status: studentLeaves.status,
     })
     .from(studentLeaves)
+    .innerJoin(students, eq(studentLeaves.studentId, students.id))
+    .innerJoin(
+      enrollments,
+      and(
+        eq(enrollments.studentId, students.id),
+        eq(enrollments.academicYearId, yearId)
+      )
+    )
+    .innerJoin(sections, eq(enrollments.sectionId, sections.id))
+    .innerJoin(classes, eq(sections.classId, classes.id))
     .where(
       and(
         eq(studentLeaves.schoolId, schoolId),
@@ -308,6 +347,7 @@ export default async function AttendancePage({
       schoolId={schoolId}
       classSummaries={classSummaries}
       allSchoolAbsentees={allSchoolAbsentees}
+      allSchoolLeaves={allSchoolLeaves}
       userRole={userRole}
       initialTab={initialTab}
     />

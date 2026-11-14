@@ -368,3 +368,39 @@ export async function getActiveLeavesForSectionDate(input: {
       )
     );
 }
+
+export async function updateStudentLeaveStatus(input: {
+  leaveId: string;
+  status: "APPROVED" | "REJECTED";
+  schoolId?: string;
+}) {
+  const session = await resolveVerifiedSession(input);
+
+  const [updated] = await db
+    .update(studentLeaves)
+    .set({
+      status: input.status,
+      approvedById: session.userId || null,
+    })
+    .where(
+      and(
+        eq(studentLeaves.id, input.leaveId),
+        eq(studentLeaves.schoolId, session.schoolId)
+      )
+    )
+    .returning();
+
+  await db.insert(auditLogs).values({
+    schoolId: session.schoolId,
+    userId: session.userId || "usr_teacher",
+    entityType: "STUDENT_LEAVE",
+    entityId: input.leaveId,
+    action: "UPDATE",
+    newValueJson: { status: input.status },
+    reason: `Teacher/Admin updated student leave status to ${input.status}`,
+  });
+
+  safeRevalidatePath("/attendance");
+  safeRevalidatePath("/parent");
+  return { success: true, leave: updated };
+}

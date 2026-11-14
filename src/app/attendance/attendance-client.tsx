@@ -38,7 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { submitSectionAttendance } from "@/actions/attendance";
+import { submitSectionAttendance, updateStudentLeaveStatus } from "@/actions/attendance";
 import { LockOverrideDialog } from "@/components/layout/lock-override-dialog";
 import { SearchableSelect, SearchOption } from "@/components/ui/searchable-select";
 import { ActionBanner } from "@/components/ui/action-banner";
@@ -93,6 +93,21 @@ export interface DailyAbsenteeStudent {
   appliedLeaveReason?: string;
 }
 
+export interface SchoolLeaveItem {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  admissionNo?: string;
+  className?: string;
+  sectionName?: string;
+  sectionId?: string;
+  leaveType: string;
+  reason: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+}
+
 interface AttendanceClientProps {
   sections: SectionMeta[];
   selectedSectionId: string;
@@ -103,12 +118,17 @@ interface AttendanceClientProps {
     studentId: string;
     leaveType: string;
     reason: string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    studentName?: string;
   }>;
   isLocked: boolean;
   academicYearId: string;
   schoolId: string;
   classSummaries?: ClassAttendanceSummary[];
   allSchoolAbsentees?: DailyAbsenteeStudent[];
+  allSchoolLeaves?: SchoolLeaveItem[];
   userRole?: string;
   initialTab?: "grid" | "register";
 }
@@ -124,6 +144,7 @@ export function AttendanceClient({
   schoolId,
   classSummaries = [],
   allSchoolAbsentees = [],
+  allSchoolLeaves = [],
   userRole = "SUPER_ADMIN",
   initialTab = "register",
 }: AttendanceClientProps) {
@@ -157,6 +178,33 @@ export function AttendanceClient({
       sublabel: sec.teacherName ? `Class Teacher: ${sec.teacherName}` : undefined,
     }));
   }, [sections]);
+
+  const [reviewingLeaveId, setReviewingLeaveId] = React.useState<string | null>(null);
+  const [leaveActionMsg, setLeaveActionMsg] = React.useState<string | null>(null);
+
+  const handleReviewLeave = async (
+    leaveId: string,
+    status: "APPROVED" | "REJECTED",
+    studentEnrollmentId?: string,
+    autoMarkStatus?: "MEDICAL_LEAVE" | "ABSENT"
+  ) => {
+    setReviewingLeaveId(leaveId);
+    try {
+      const res = await updateStudentLeaveStatus({ leaveId, status });
+      if (res.success) {
+        if (studentEnrollmentId && autoMarkStatus) {
+          handleStatusChange(studentEnrollmentId, autoMarkStatus);
+        }
+        setLeaveActionMsg(`Leave application marked as ${status} successfully.`);
+        setTimeout(() => setLeaveActionMsg(null), 4000);
+        router.refresh();
+      }
+    } catch (err: any) {
+      console.error("Failed to update leave:", err);
+    } finally {
+      setReviewingLeaveId(null);
+    }
+  };
 
   // Sync state if rosterData changes from server component re-render
   React.useEffect(() => {
@@ -800,6 +848,84 @@ export function AttendanceClient({
               </Table>
             )}
           </div>
+
+          {/* Section C: School-Wide Parent-Submitted Leave Applications */}
+          {allSchoolLeaves.length > 0 && (
+            <div className="bg-white border border-purple-200 rounded-lg overflow-hidden shadow-sm">
+              <div className="p-3 bg-purple-50/80 border-b border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🏖️</span>
+                  <h3 className="text-xs font-bold text-purple-950 uppercase tracking-wide">
+                    Parent-Submitted Student Leave Applications ({allSchoolLeaves.length})
+                  </h3>
+                </div>
+                <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-800 border-purple-300 font-bold">
+                  All Classes Today
+                </Badge>
+              </div>
+
+              <div className="divide-y divide-purple-100">
+                {allSchoolLeaves.map((leave) => {
+                  const isApproved = leave.status === "APPROVED";
+                  return (
+                    <div
+                      key={leave.id}
+                      className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-purple-50/40"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900">{leave.studentName}</span>
+                          <span className="text-[11px] text-slate-500 font-tabular">({leave.admissionNo})</span>
+                          <Badge variant="outline" className="text-[10px] bg-slate-100 text-slate-700">
+                            {leave.className} - Section {leave.sectionName}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-800 font-bold border-purple-200">
+                            {leave.leaveType}
+                          </Badge>
+                          <Badge variant={isApproved ? "success" : "warning"} className="text-[10px]">
+                            {isApproved ? "Approved" : "Review Pending"}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-slate-700">
+                          Reason: <span className="italic font-medium text-slate-900">"{leave.reason}"</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-tabular">
+                          Date Range: {leave.startDate} to {leave.endDate}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!isApproved && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleReviewLeave(leave.id, "APPROVED")}
+                            disabled={reviewingLeaveId === leave.id || isLocked}
+                            className="h-7 text-xs bg-purple-700 hover:bg-purple-800 text-white font-semibold"
+                          >
+                            {reviewingLeaveId === leave.id ? "Approving..." : "Approve Leave"}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (leave.sectionId) {
+                              router.push(`/attendance?sectionId=${leave.sectionId}&date=${currentDate}&view=grid`);
+                              setActiveTab("grid");
+                            }
+                          }}
+                          className="h-7 text-xs border-purple-200 text-purple-900 hover:bg-purple-100 font-semibold gap-1"
+                        >
+                          <span>Open Class Grid</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -876,6 +1002,112 @@ export function AttendanceClient({
             </div>
           </div>
 
+          {/* Leave Action Feedback Notification */}
+          {leaveActionMsg && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-between">
+              <span>✅ {leaveActionMsg}</span>
+              <button onClick={() => setLeaveActionMsg(null)} className="text-emerald-600 hover:text-emerald-900">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Active Parent Leave Applications for This Section */}
+          {activeLeaves.length > 0 && (
+            <div className="bg-purple-50/80 border border-purple-200 rounded-lg p-3.5 space-y-2.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🏖️</span>
+                  <h4 className="text-xs font-bold text-purple-950 uppercase tracking-wide">
+                    Parent Leave Applications for this Section ({activeLeaves.length})
+                  </h4>
+                </div>
+                <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-800 border-purple-300 font-bold">
+                  Class Teacher Action
+                </Badge>
+              </div>
+
+              <div className="space-y-2">
+                {activeLeaves.map((l) => {
+                  const matchingStudent = roster.find((s) => s.studentId === l.studentId);
+                  const isApproved = l.status === "APPROVED";
+
+                  return (
+                    <div
+                      key={l.id}
+                      className="bg-white border border-purple-200 rounded p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs shadow-2xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900">{l.studentName || matchingStudent?.name || "Student"}</span>
+                          <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-800 border-purple-300 font-bold">
+                            {l.leaveType} Leave
+                          </Badge>
+                          <Badge
+                            variant={isApproved ? "success" : "warning"}
+                            className="text-[10px]"
+                          >
+                            {isApproved ? "Approved" : "Review Pending"}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-slate-700 font-medium">
+                          Reason: <span className="text-slate-900 italic">"{l.reason}"</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-tabular">
+                          Duration: {l.startDate || currentDate} to {l.endDate || currentDate}
+                        </div>
+                      </div>
+
+                      {/* 1-Click Teacher Action */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!isApproved ? (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                handleReviewLeave(
+                                  l.id,
+                                  "APPROVED",
+                                  matchingStudent?.enrollmentId,
+                                  l.leaveType === "MEDICAL" ? "MEDICAL_LEAVE" : "ABSENT"
+                                )
+                              }
+                              disabled={reviewingLeaveId === l.id || isLocked}
+                              className="h-7 text-xs bg-purple-700 hover:bg-purple-800 text-white font-semibold gap-1"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>
+                                {reviewingLeaveId === l.id
+                                  ? "Updating..."
+                                  : l.leaveType === "MEDICAL"
+                                  ? "Approve & Mark ML"
+                                  : "Approve Leave"}
+                              </span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReviewLeave(l.id, "REJECTED")}
+                              disabled={reviewingLeaveId === l.id || isLocked}
+                              className="h-7 text-xs border-slate-300 text-slate-600 hover:bg-slate-100"
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>Leave Approved</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Interactive Student Roster Grid */}
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100 shadow-sm">
             {roster.map((student) => {
@@ -885,6 +1117,8 @@ export function AttendanceClient({
               else if (student.status === "MEDICAL_LEAVE") rowBg = "bg-purple-50/50 hover:bg-purple-50";
               else if (student.status === "HALF_DAY") rowBg = "bg-blue-50/50 hover:bg-blue-50";
 
+              const appliedLeave = activeLeavesMap.get(student.studentId);
+
               return (
                 <div key={student.enrollmentId} className={`p-3 transition-colors ${rowBg}`}>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -893,11 +1127,22 @@ export function AttendanceClient({
                         #{String(student.rollNo).padStart(2, "0")}
                       </span>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-xs text-slate-900">{student.name}</span>
-                          {activeLeavesMap.has(student.studentId) && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-purple-100 text-purple-800 border-purple-300 font-bold flex items-center gap-1">
-                              <span>🏖️ Parent Leave Applied</span>
+                          {appliedLeave && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-900 border-purple-300 font-bold flex items-center gap-1"
+                            >
+                              <span>🏖️ Parent Leave ({appliedLeave.leaveType}): "{appliedLeave.reason}"</span>
+                            </Badge>
+                          )}
+                          {appliedLeave && (
+                            <Badge
+                              variant={appliedLeave.status === "APPROVED" ? "success" : "warning"}
+                              className="text-[9px] px-1 py-0"
+                            >
+                              {appliedLeave.status === "APPROVED" ? "Approved" : "Review Pending"}
                             </Badge>
                           )}
                         </div>
