@@ -118,76 +118,6 @@ export function SpreadsheetMarkEntryClient({
     setTimeout(() => setNotification(null), 6000);
   };
 
-  // Check if mark input is valid (within [0, max] or one of AB, ML, EX)
-  const getRowErrors = React.useCallback(
-    (row: StudentMarkEntryRow) => {
-      const errors: { theory?: string; practical?: string; grace?: string } = {};
-
-      // 1. Theory Validation
-      if (row.theory && row.theory.trim() !== "") {
-        const val = row.theory.trim().toUpperCase();
-        if (!["AB", "ML", "EX"].includes(val)) {
-          const num = Number(val);
-          if (isNaN(num)) {
-            errors.theory = "Must be a number or AB/ML/EX";
-          } else if (num < 0) {
-            errors.theory = "Cannot be negative";
-          } else if (num > maxTheory) {
-            errors.theory = `Exceeds max (${maxTheory})`;
-          }
-        }
-      }
-
-      // 2. Practical Validation
-      if (maxPractical > 0 && row.practical && row.practical.trim() !== "") {
-        const val = row.practical.trim().toUpperCase();
-        if (!["AB", "ML", "EX"].includes(val)) {
-          const num = Number(val);
-          if (isNaN(num)) {
-            errors.practical = "Must be a number or AB/ML/EX";
-          } else if (num < 0) {
-            errors.practical = "Cannot be negative";
-          } else if (num > maxPractical) {
-            errors.practical = `Exceeds max (${maxPractical})`;
-          }
-        }
-      }
-
-      // 3. Grace Validation
-      if (row.grace !== undefined && row.grace !== null) {
-        const g = Number(row.grace);
-        if (isNaN(g) || g < 0) {
-          errors.grace = "Grace cannot be negative";
-        } else {
-          const th = parseFloat(row.theory) || 0;
-          const pr = parseFloat(row.practical) || 0;
-          const isCode = ["AB", "ML", "EX"].includes(row.theory?.trim().toUpperCase() || "");
-          if (!isCode && th + pr + g > maxTheory + maxPractical) {
-            errors.grace = `Total with grace exceeds max (${maxTheory + maxPractical})`;
-          }
-        }
-      }
-
-      return errors;
-    },
-    [maxTheory, maxPractical]
-  );
-
-  const validationErrors = React.useMemo(() => {
-    const map = new Map<string, { theory?: string; practical?: string; grace?: string }>();
-    let count = 0;
-
-    for (const m of marks) {
-      const errs = getRowErrors(m);
-      if (errs.theory || errs.practical || errs.grace) {
-        map.set(m.enrollmentId, errs);
-        count++;
-      }
-    }
-
-    return { map, count };
-  }, [marks, getRowErrors]);
-
   const scheduleOptions: SearchOption[] = React.useMemo(() => {
     return schedules.map((s) => ({
       value: s.id,
@@ -202,19 +132,8 @@ export function SpreadsheetMarkEntryClient({
     setMarks(initialMarks);
   }, [initialMarks]);
 
-  // Compute percentage using the non-penalizing ML/EX denominator exclusion algorithm
+  // Compute percentage using the non-penalizing ML/EX denominator exclusion algorithm (capped to max marks)
   const computeStudentStats = (row: StudentMarkEntryRow) => {
-    const rowErr = validationErrors.map.get(row.enrollmentId);
-    if (rowErr && (rowErr.theory || rowErr.practical || rowErr.grace)) {
-      return {
-        totalScore: "Exceeds Max",
-        percentage: "Invalid",
-        isPass: false,
-        hasError: true,
-        errorMessage: rowErr.theory || rowErr.practical || rowErr.grace || "Invalid marks entered",
-      };
-    }
-
     let numerator = 0;
     let denominator = 0;
 
@@ -225,7 +144,8 @@ export function SpreadsheetMarkEntryClient({
       numerator += 0;
       denominator += maxTheory;
     } else {
-      numerator += (parseFloat(row.theory) || 0) + (row.grace || 0);
+      const th = Math.min(Math.max(0, parseFloat(row.theory) || 0), maxTheory);
+      numerator += th + Math.max(0, row.grace || 0);
       denominator += maxTheory;
     }
 
@@ -236,22 +156,26 @@ export function SpreadsheetMarkEntryClient({
       numerator += 0;
       denominator += maxPractical;
     } else {
-      numerator += parseFloat(row.practical) || 0;
+      const pr = Math.min(Math.max(0, parseFloat(row.practical) || 0), maxPractical);
+      numerator += pr;
       denominator += maxPractical;
     }
 
     if (denominator === 0) {
-      return { totalScore: "ML", percentage: "N/A (Exempted)", isPass: true, hasError: false };
+      return { totalScore: "ML", percentage: "N/A (Exempted)", isPass: true };
     }
 
+    // Cap total score to denominator if grace pushed it over
+    numerator = Math.min(numerator, denominator);
+
     const pct = ((numerator / denominator) * 100).toFixed(1);
-    const isPass = parseFloat(pct) >= 33.0;
+    const passThreshold = passMarks ? (passMarks / denominator) * 100 : 33.0;
+    const isPass = parseFloat(pct) >= passThreshold;
 
     return {
       totalScore: `${numerator} / ${denominator}`,
       percentage: `${pct}%`,
       isPass,
-      hasError: false,
     };
   };
 
@@ -259,50 +183,38 @@ export function SpreadsheetMarkEntryClient({
   const rankMap = React.useMemo(() => {
     const studentScores = marks.map((m) => {
       const stats = computeStudentStats(m);
-      const isErr = stats.hasError;
-      const numericPct = isErr ? -1 : parseFloat(stats.percentage) || 0;
-      return { enrollmentId: m.enrollmentId, numericPct, isErr };
+      const numericPct = parseFloat(stats.percentage) || 0;
+      return { enrollmentId: m.enrollmentId, numericPct };
     });
 
-    const validScores = studentScores.filter((s) => !s.isErr);
-    validScores.sort((a, b) => b.numericPct - a.numericPct);
+    studentScores.sort((a, b) => b.numericPct - a.numericPct);
 
-    const map = new Map<string, number | null>();
+    const map = new Map<string, number>();
     let currentRank = 1;
-    for (let i = 0; i < validScores.length; i++) {
-      if (i > 0 && validScores[i].numericPct < validScores[i - 1].numericPct) {
+    for (let i = 0; i < studentScores.length; i++) {
+      if (i > 0 && studentScores[i].numericPct < studentScores[i - 1].numericPct) {
         currentRank = i + 1;
       }
-      map.set(validScores[i].enrollmentId, currentRank);
+      map.set(studentScores[i].enrollmentId, currentRank);
     }
-
-    for (const s of studentScores) {
-      if (s.isErr) {
-        map.set(s.enrollmentId, null);
-      }
-    }
-
     return map;
-  }, [marks, maxTheory, maxPractical, validationErrors]);
+  }, [marks, maxTheory, maxPractical, passMarks]);
 
   // Subject Performance Distribution
   const performanceDistribution = React.useMemo(() => {
     let high = 0; // >= 80%
     let avg = 0; // 50% - 79%
     let remedial = 0; // < 50%
-    let validCount = 0;
 
     for (const m of marks) {
       const stats = computeStudentStats(m);
-      if (stats.hasError) continue;
-      validCount++;
       const pct = parseFloat(stats.percentage) || 0;
       if (pct >= 80) high++;
       else if (pct >= 50) avg++;
       else remedial++;
     }
 
-    const total = validCount || 1;
+    const total = marks.length || 1;
     return {
       high,
       avg,
@@ -311,7 +223,7 @@ export function SpreadsheetMarkEntryClient({
       avgPct: Math.round((avg / total) * 100),
       remedialPct: Math.round((remedial / total) * 100),
     };
-  }, [marks, maxTheory, maxPractical, validationErrors]);
+  }, [marks, maxTheory, maxPractical, passMarks]);
 
   const handleCellChange = (
     enrollmentId: string,
@@ -329,15 +241,6 @@ export function SpreadsheetMarkEntryClient({
     else if (upper === "ML") attStatus = "ML";
     else if (upper === "EX") attStatus = "EX";
 
-    const num = parseFloat(value);
-    if (!isNaN(num)) {
-      if (field === "theory" && num > maxTheory) {
-        notify("warning", `Entered theory mark (${num}) exceeds maximum allowed (${maxTheory}).`);
-      } else if (field === "practical" && num > maxPractical) {
-        notify("warning", `Entered practical mark (${num}) exceeds maximum allowed (${maxPractical}).`);
-      }
-    }
-
     setMarks((prev) =>
       prev.map((item) => {
         if (item.enrollmentId !== enrollmentId) return item;
@@ -351,60 +254,56 @@ export function SpreadsheetMarkEntryClient({
     setSaveStatus("Unsaved changes...");
   };
 
-  const handleAutoClampAll = () => {
+  // Clean auto-cap on blur so marks never stay above maximum limits
+  const handleCellBlur = (
+    enrollmentId: string,
+    field: "theory" | "practical" | "grace"
+  ) => {
     setMarks((prev) =>
-      prev.map((row) => {
-        let th = row.theory;
-        let pr = row.practical;
-        let gr = row.grace;
+      prev.map((item) => {
+        if (item.enrollmentId !== enrollmentId) return item;
 
-        if (th && !["AB", "ML", "EX"].includes(th.trim().toUpperCase())) {
-          const thNum = parseFloat(th);
-          if (!isNaN(thNum)) {
-            if (thNum > maxTheory) th = String(maxTheory);
-            else if (thNum < 0) th = "0";
+        if (field === "theory") {
+          const val = item.theory.trim().toUpperCase();
+          if (["AB", "ML", "EX"].includes(val)) return item;
+          const num = parseFloat(val);
+          if (isNaN(num) || num < 0) return { ...item, theory: "" };
+          if (num > maxTheory) {
+            return { ...item, theory: String(maxTheory) };
           }
+          return { ...item, theory: String(num) };
         }
 
-        if (maxPractical > 0 && pr && !["AB", "ML", "EX"].includes(pr.trim().toUpperCase())) {
-          const prNum = parseFloat(pr);
-          if (!isNaN(prNum)) {
-            if (prNum > maxPractical) pr = String(maxPractical);
-            else if (prNum < 0) pr = "0";
+        if (field === "practical") {
+          if (maxPractical === 0) return { ...item, practical: "0" };
+          const val = item.practical.trim().toUpperCase();
+          if (["AB", "ML", "EX"].includes(val)) return item;
+          const num = parseFloat(val);
+          if (isNaN(num) || num < 0) return { ...item, practical: "0" };
+          if (num > maxPractical) {
+            return { ...item, practical: String(maxPractical) };
           }
+          return { ...item, practical: String(num) };
         }
 
-        if (gr < 0) gr = 0;
-        const finalTh = parseFloat(th) || 0;
-        const finalPr = parseFloat(pr) || 0;
-        if (finalTh + finalPr + gr > maxTheory + maxPractical) {
-          gr = Math.max(0, maxTheory + maxPractical - (finalTh + finalPr));
+        if (field === "grace") {
+          let g = Math.max(0, Number(item.grace) || 0);
+          const th = parseFloat(item.theory) || 0;
+          const pr = parseFloat(item.practical) || 0;
+          if (th + pr + g > maxTheory + maxPractical) {
+            g = Math.max(0, maxTheory + maxPractical - (th + pr));
+          }
+          return { ...item, grace: g };
         }
 
-        return {
-          ...row,
-          theory: th,
-          practical: pr,
-          grace: gr,
-        };
+        return item;
       })
     );
-    notify("success", `Clamped all out-of-bounds marks to maximum limits (Theory: ${maxTheory}, Practical: ${maxPractical}).`);
   };
 
   const handleSaveMarks = async () => {
     if (isLocked) {
       notify("error", "Academic year is LOCKED.");
-      return;
-    }
-
-    if (validationErrors.count > 0) {
-      notify(
-        "error",
-        `Cannot save marks: ${validationErrors.count} student ${
-          validationErrors.count === 1 ? "entry has" : "entries have"
-        } marks exceeding maximum allowed limits (Max Theory: ${maxTheory}, Max Practical: ${maxPractical}).`
-      );
       return;
     }
 
@@ -414,14 +313,20 @@ export function SpreadsheetMarkEntryClient({
     try {
       const entries = marks.map((m) => {
         const isCode = m.theory === "AB" || m.theory === "ML" || m.theory === "EX";
-        const th = isCode ? null : parseFloat(m.theory) || 0;
-        const pr = isCode ? null : parseFloat(m.practical) || 0;
+        const rawTh = isCode ? null : parseFloat(m.theory) || 0;
+        const rawPr = isCode ? null : parseFloat(m.practical) || 0;
+        const th = rawTh !== null ? Math.min(Math.max(0, rawTh), maxTheory) : null;
+        const pr = rawPr !== null ? Math.min(Math.max(0, rawPr), maxPractical) : null;
+        let gr = Math.max(0, m.grace || 0);
+        if (th !== null && pr !== null && th + pr + gr > maxTheory + maxPractical) {
+          gr = Math.max(0, maxTheory + maxPractical - (th + pr));
+        }
 
         return {
           enrollmentId: m.enrollmentId,
           theoryMarks: th,
           practicalMarks: pr,
-          graceMarks: m.grace,
+          graceMarks: gr,
           attendanceStatus: m.attendanceStatus,
         };
       });
@@ -445,12 +350,6 @@ export function SpreadsheetMarkEntryClient({
   };
 
   const handleDefaulterCheck = async (stu: StudentMarkEntryRow) => {
-    const rowErr = validationErrors.map.get(stu.enrollmentId);
-    if (rowErr && (rowErr.theory || rowErr.practical || rowErr.grace)) {
-      notify("error", `Cannot download report card: ${stu.name} has invalid marks exceeding maximum limits.`);
-      return;
-    }
-
     try {
       const res = await generateReportCardPdf({
         schoolId,
@@ -476,24 +375,26 @@ export function SpreadsheetMarkEntryClient({
       notify("error", "Academic year is locked.");
       return;
     }
-    if (validationErrors.count > 0) {
-      notify("error", "Cannot freeze schedule: Please correct out-of-bounds marks before submitting.");
-      return;
-    }
 
     setIsLocking(true);
     try {
       if (saveStatus === "Unsaved changes...") {
         const entries = marks.map((m) => {
           const isCode = m.theory === "AB" || m.theory === "ML" || m.theory === "EX";
-          const th = isCode ? null : parseFloat(m.theory) || 0;
-          const pr = isCode ? null : parseFloat(m.practical) || 0;
+          const rawTh = isCode ? null : parseFloat(m.theory) || 0;
+          const rawPr = isCode ? null : parseFloat(m.practical) || 0;
+          const th = rawTh !== null ? Math.min(Math.max(0, rawTh), maxTheory) : null;
+          const pr = rawPr !== null ? Math.min(Math.max(0, rawPr), maxPractical) : null;
+          let gr = Math.max(0, m.grace || 0);
+          if (th !== null && pr !== null && th + pr + gr > maxTheory + maxPractical) {
+            gr = Math.max(0, maxTheory + maxPractical - (th + pr));
+          }
 
           return {
             enrollmentId: m.enrollmentId,
             theoryMarks: th,
             practicalMarks: pr,
-            graceMarks: m.grace,
+            graceMarks: gr,
             attendanceStatus: m.attendanceStatus,
           };
         });
@@ -562,10 +463,6 @@ export function SpreadsheetMarkEntryClient({
 
   // 1-Click Bulk Report Card Batch
   const handleDownloadBatchReportCards = async () => {
-    if (validationErrors.count > 0) {
-      notify("error", "Cannot generate bulk report cards: Please resolve invalid mark entries first.");
-      return;
-    }
     if (!classId) {
       notify("error", "Class information missing for report cards.");
       return;
@@ -664,14 +561,8 @@ export function SpreadsheetMarkEntryClient({
             <Button
               size="sm"
               onClick={handleFreezeMarks}
-              disabled={isLocked || isSaving || isLocking || validationErrors.count > 0}
-              className={cn(
-                "gap-1.5 text-xs text-white font-bold transition-all",
-                validationErrors.count > 0
-                  ? "bg-slate-400 cursor-not-allowed opacity-60"
-                  : "bg-amber-600 hover:bg-amber-700"
-              )}
-              title={validationErrors.count > 0 ? "Correct invalid marks to submit and freeze" : undefined}
+              disabled={isLocked || isSaving || isLocking}
+              className="gap-1.5 text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold"
             >
               <Lock className="h-3.5 w-3.5" />
               <span>{isLocking ? "Freezing..." : "Submit & Freeze Marks"}</span>
@@ -681,14 +572,8 @@ export function SpreadsheetMarkEntryClient({
           <Button
             size="sm"
             onClick={handleSaveMarks}
-            disabled={isLocked || isSaving || scheduleLocked || validationErrors.count > 0}
-            className={cn(
-              "gap-1.5 text-xs text-white font-bold transition-all",
-              validationErrors.count > 0
-                ? "bg-slate-400 cursor-not-allowed opacity-60"
-                : "bg-navy-900 hover:bg-navy-800"
-            )}
-            title={validationErrors.count > 0 ? "Correct invalid marks before saving" : undefined}
+            disabled={isLocked || isSaving || scheduleLocked}
+            className="gap-1.5 text-xs bg-navy-900 hover:bg-navy-800 text-white font-bold"
           >
             <Save className="h-3.5 w-3.5" />
             <span>{isSaving ? "Saving..." : "Save Marks"}</span>
@@ -752,31 +637,6 @@ export function SpreadsheetMarkEntryClient({
           </span>
         </div>
       </div>
-
-      {/* Real-time Out-of-Bounds Marks Validation Alert Banner */}
-      {validationErrors.count > 0 && (
-        <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-xs text-red-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm animate-in fade-in duration-200">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-            <div>
-              <span className="font-bold text-red-900">
-                ⚠️ INVALID MARKS DETECTED:
-              </span>{" "}
-              <span>
-                {validationErrors.count} student {validationErrors.count === 1 ? "entry has" : "entries have"} marks exceeding maximum allowed limits (Theory max: <strong>{maxTheory}</strong>, Practical max: <strong>{maxPractical}</strong>). Save and Freeze actions are suspended until corrected.
-              </span>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleAutoClampAll}
-            className="h-7 text-xs bg-white border-red-300 text-red-700 hover:bg-red-100 font-semibold gap-1 shrink-0"
-          >
-            <span>Auto-Clamp to Max Limits</span>
-          </Button>
-        </div>
-      )}
 
       {/* Fee Defaulter Alert Modal/Banner */}
       {selectedDefaulter && (
@@ -875,26 +735,20 @@ export function SpreadsheetMarkEntryClient({
           <TableBody>
             {paginatedMarks.map((row) => {
               const stats = computeStudentStats(row);
-              const rank = rankMap.get(row.enrollmentId);
-              const rowErr = validationErrors.map.get(row.enrollmentId);
+              const rank = rankMap.get(row.enrollmentId) || 0;
+              const isOverTh = parseFloat(row.theory) > maxTheory;
+              const isOverPr = maxPractical > 0 && parseFloat(row.practical) > maxPractical;
 
               return (
                 <TableRow
                   key={row.enrollmentId}
-                  className={cn(
-                    "hover:bg-slate-50/70 border-b border-slate-100 transition-colors",
-                    stats.hasError && "bg-red-50/30"
-                  )}
+                  className="hover:bg-slate-50/70 border-b border-slate-100 transition-colors"
                 >
                   <TableCell className="text-center font-tabular text-xs font-bold text-slate-400">
                     {row.rollNo}
                   </TableCell>
                   <TableCell className="text-center font-bold text-xs">
-                    {stats.hasError || rank == null ? (
-                      <span className="text-slate-400 font-mono text-xs" title="Rank unavailable due to invalid marks">
-                        —
-                      </span>
-                    ) : rank === 1 ? (
+                    {rank === 1 ? (
                       <Badge className="bg-amber-400 text-amber-950 font-black text-[10px] border-amber-500 shadow-xs">
                         🥇 1st
                       </Badge>
@@ -924,110 +778,70 @@ export function SpreadsheetMarkEntryClient({
 
                   {/* Theory Input Cell */}
                   <TableCell className="p-1 text-center">
-                    <div className="flex flex-col items-center">
-                      <input
-                        type="text"
-                        value={row.theory}
-                        onChange={(e) => handleCellChange(row.enrollmentId, "theory", e.target.value)}
-                        disabled={isLocked || scheduleLocked}
-                        placeholder="0"
-                        title={rowErr?.theory ? `Error: ${rowErr.theory}` : `Theory marks (Max: ${maxTheory})`}
-                        className={cn(
-                          "w-16 h-7 text-center font-tabular font-bold text-xs rounded transition-all",
-                          rowErr?.theory
-                            ? "border-2 border-red-500 bg-red-50 text-red-800 ring-2 ring-red-200 focus:outline-none focus:ring-red-400"
-                            : "border border-slate-300 focus:border-navy-600 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
-                        )}
-                      />
-                      {rowErr?.theory && (
-                        <span className="text-[9px] font-bold text-red-600 leading-tight mt-0.5 whitespace-nowrap" title={rowErr.theory}>
-                          Max: {maxTheory}
-                        </span>
+                    <input
+                      type="text"
+                      value={row.theory}
+                      onChange={(e) => handleCellChange(row.enrollmentId, "theory", e.target.value)}
+                      onBlur={() => handleCellBlur(row.enrollmentId, "theory")}
+                      disabled={isLocked || scheduleLocked}
+                      placeholder="0"
+                      title={`Max Theory: ${maxTheory}`}
+                      className={cn(
+                        "w-16 h-7 text-center font-tabular font-bold text-xs border rounded transition-colors focus:outline-none",
+                        isOverTh
+                          ? "border-amber-400 bg-amber-50/60 text-amber-900 focus:border-amber-500"
+                          : "border border-slate-300 focus:border-navy-600 disabled:bg-slate-100 disabled:text-slate-500"
                       )}
-                    </div>
+                    />
                   </TableCell>
 
                   {/* Practical Input Cell */}
                   <TableCell className="p-1 text-center">
-                    <div className="flex flex-col items-center">
-                      <input
-                        type="text"
-                        value={row.practical}
-                        onChange={(e) => handleCellChange(row.enrollmentId, "practical", e.target.value)}
-                        disabled={isLocked || scheduleLocked || maxPractical === 0}
-                        placeholder="0"
-                        title={rowErr?.practical ? `Error: ${rowErr.practical}` : `Practical marks (Max: ${maxPractical})`}
-                        className={cn(
-                          "w-16 h-7 text-center font-tabular font-bold text-xs rounded transition-all",
-                          rowErr?.practical
-                            ? "border-2 border-red-500 bg-red-50 text-red-800 ring-2 ring-red-200 focus:outline-none focus:ring-red-400"
-                            : "border border-slate-300 focus:border-navy-600 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
-                        )}
-                      />
-                      {rowErr?.practical && (
-                        <span className="text-[9px] font-bold text-red-600 leading-tight mt-0.5 whitespace-nowrap" title={rowErr.practical}>
-                          Max: {maxPractical}
-                        </span>
+                    <input
+                      type="text"
+                      value={row.practical}
+                      onChange={(e) => handleCellChange(row.enrollmentId, "practical", e.target.value)}
+                      onBlur={() => handleCellBlur(row.enrollmentId, "practical")}
+                      disabled={isLocked || scheduleLocked || maxPractical === 0}
+                      placeholder="0"
+                      title={`Max Practical: ${maxPractical}`}
+                      className={cn(
+                        "w-16 h-7 text-center font-tabular font-bold text-xs border rounded transition-colors focus:outline-none",
+                        isOverPr
+                          ? "border-amber-400 bg-amber-50/60 text-amber-900 focus:border-amber-500"
+                          : "border border-slate-300 focus:border-navy-600 disabled:bg-slate-100 disabled:text-slate-500"
                       )}
-                    </div>
+                    />
                   </TableCell>
 
                   {/* Grace Input Cell */}
                   <TableCell className="p-1 text-center">
-                    <div className="flex flex-col items-center">
-                      <input
-                        type="number"
-                        min="0"
-                        value={row.grace}
-                        onChange={(e) => handleCellChange(row.enrollmentId, "grace", e.target.value)}
-                        disabled={isLocked || scheduleLocked}
-                        title={rowErr?.grace ? `Error: ${rowErr.grace}` : "Grace Marks (non-negative)"}
-                        className={cn(
-                          "w-14 h-7 text-center font-tabular text-xs rounded font-bold transition-all",
-                          rowErr?.grace
-                            ? "border-2 border-red-500 bg-red-50 text-red-800 ring-2 ring-red-200 focus:outline-none focus:ring-red-400"
-                            : "border border-amber-300 bg-amber-50/40 text-amber-900 focus:border-navy-600 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
-                        )}
-                      />
-                      {rowErr?.grace && (
-                        <span className="text-[9px] font-bold text-red-600 leading-tight mt-0.5 whitespace-nowrap" title={rowErr.grace}>
-                          Invalid
-                        </span>
-                      )}
-                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      value={row.grace}
+                      onChange={(e) => handleCellChange(row.enrollmentId, "grace", e.target.value)}
+                      onBlur={() => handleCellBlur(row.enrollmentId, "grace")}
+                      disabled={isLocked || scheduleLocked}
+                      className="w-14 h-7 text-center font-tabular text-xs border border-amber-300 rounded bg-amber-50/40 text-amber-900 font-bold focus:border-navy-600 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
+                    />
                   </TableCell>
 
                   {/* Computed Score */}
-                  <TableCell className="text-right font-tabular text-xs font-semibold">
-                    {stats.hasError ? (
-                      <span className="text-red-600 font-bold" title={stats.errorMessage}>
-                        ⚠️ Exceeds Max
-                      </span>
-                    ) : (
-                      <span className="text-slate-800">{stats.totalScore}</span>
-                    )}
+                  <TableCell className="text-right font-tabular text-xs font-semibold text-slate-800">
+                    {stats.totalScore}
                   </TableCell>
 
                   {/* Percentage */}
-                  <TableCell className="text-right font-tabular text-xs font-bold">
-                    {stats.hasError ? (
-                      <span className="text-red-600 font-bold">Invalid</span>
-                    ) : (
-                      <span className="text-slate-900">{stats.percentage}</span>
-                    )}
+                  <TableCell className="text-right font-tabular text-xs font-bold text-slate-900">
+                    {stats.percentage}
                   </TableCell>
 
                   {/* Pass / Fail */}
                   <TableCell className="text-center">
-                    {stats.hasError ? (
-                      <Badge variant="danger" className="text-[10px] px-1.5 py-0 bg-red-100 text-red-800 border-red-300 font-bold">
-                        Error
-                      </Badge>
-                    ) : (
-                      <Badge variant={stats.isPass ? "success" : "danger"} className="text-[10px] px-1.5 py-0">
-                        {stats.isPass ? "Pass" : "Fail"}
-                      </Badge>
-                    )}
+                    <Badge variant={stats.isPass ? "success" : "danger"} className="text-[10px] px-1.5 py-0">
+                      {stats.isPass ? "Pass" : "Fail"}
+                    </Badge>
                   </TableCell>
 
                   {/* Report Card Button */}
@@ -1036,14 +850,7 @@ export function SpreadsheetMarkEntryClient({
                       size="sm"
                       variant="outline"
                       onClick={() => handleDefaulterCheck(row)}
-                      disabled={stats.hasError}
-                      className={cn(
-                        "h-6 text-[10px] px-2 gap-1",
-                        stats.hasError
-                          ? "text-slate-400 border-slate-200 cursor-not-allowed"
-                          : "text-navy-800 hover:bg-slate-100"
-                      )}
-                      title={stats.hasError ? "Resolve mark error before viewing report card" : undefined}
+                      className="h-6 text-[10px] px-2 gap-1 text-navy-800 hover:bg-slate-100"
                     >
                       <Download className="h-3 w-3" />
                       <span>Download</span>
