@@ -20,6 +20,8 @@ interface AcademicYearContextType {
   switchYear: (yearId: string) => Promise<void>;
   switchRole: (role: Role) => Promise<void>;
   isSwitching: boolean;
+  mobileNavOpen: boolean;
+  setMobileNavOpen: (open: boolean) => void;
 }
 
 const AcademicYearContext = React.createContext<AcademicYearContextType | undefined>(undefined);
@@ -33,6 +35,7 @@ export function AcademicYearProvider({
 }) {
   const router = useRouter();
   const [isSwitching, setIsSwitching] = React.useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
   const fallbackYear: AcademicYearItem = {
     id: "ay_2026_2027",
@@ -111,6 +114,7 @@ export function AcademicYearProvider({
         });
       }
       await switchUserRole(role);
+      setMobileNavOpen(false);
 
       // Auto-route to dedicated role landing page to prevent unauthorized view overlap
       if (role === "PARENT") {
@@ -143,6 +147,8 @@ export function AcademicYearProvider({
         switchYear: handleSwitchYear,
         switchRole: handleSwitchRole,
         isSwitching,
+        mobileNavOpen,
+        setMobileNavOpen,
       }}
     >
       {children}

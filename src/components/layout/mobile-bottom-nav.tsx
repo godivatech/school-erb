@@ -15,6 +15,7 @@ import {
   ReceiptIndianRupee,
   UsersRound,
   GraduationCap,
+  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAcademicYear } from "./academic-year-context";
@@ -22,13 +23,14 @@ import { Role } from "@/lib/guards";
 
 interface MobileTabItem {
   name: string;
-  href: string;
+  href?: string;
   icon: React.ElementType;
+  isAction?: boolean;
 }
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const { currentUser } = useAcademicYear();
+  const { currentUser, setMobileNavOpen } = useAcademicYear();
   const role = currentUser.role;
 
   let tabs: MobileTabItem[] = [];
@@ -63,6 +65,13 @@ export function MobileBottomNav() {
     ];
   }
 
+  // Always append a "Menu / All" tab to allow opening the complete role sidebar
+  tabs.push({
+    name: "Menu",
+    icon: Menu,
+    isAction: true,
+  });
+
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 block md:hidden bg-white border-t border-slate-200 shadow-lg">
       <div
@@ -71,15 +80,30 @@ export function MobileBottomNav() {
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
+
+          if (tab.isAction) {
+            return (
+              <button
+                key={tab.name}
+                type="button"
+                onClick={() => setMobileNavOpen(true)}
+                className="flex flex-col items-center justify-center gap-1 text-[10px] font-medium text-slate-600 hover:text-[#1E3A8A] transition-colors select-none"
+              >
+                <Icon className="h-5 w-5 stroke-[1.75]" />
+                <span>{tab.name}</span>
+              </button>
+            );
+          }
+
           const isActive =
             tab.href === "/"
               ? pathname === "/"
-              : pathname.startsWith(tab.href);
+              : pathname.startsWith(tab.href!);
 
           return (
             <Link
               key={tab.name}
-              href={tab.href}
+              href={tab.href!}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors select-none",
                 isActive

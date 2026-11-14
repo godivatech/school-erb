@@ -5,6 +5,7 @@ import { AcademicYearProvider, useAcademicYear } from "./academic-year-context";
 import { DesktopSidebar } from "./desktop-sidebar";
 import { TopContextBar } from "./top-context-bar";
 import { MobileBottomNav } from "./mobile-bottom-nav";
+import { MobileNavDrawer } from "./mobile-nav-drawer";
 import { CommandPalette } from "./command-palette";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -104,6 +105,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       {/* Mobile PWA Bottom Navigation */}
       <div className="print:hidden">
         <MobileBottomNav />
+      </div>
+
+      {/* Mobile Full Sidebar Drawer (Role Switcher + All Pages Navigation) */}
+      <div className="print:hidden">
+        <MobileNavDrawer />
       </div>
 
       {/* Global Command Palette */}

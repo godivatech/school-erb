@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { Role } from "@/lib/guards";
 import { useAcademicYear } from "./academic-year-context";
 
-interface NavItem {
+export interface NavItem {
   title: string;
   href: string;
   icon: React.ElementType;
@@ -33,7 +33,7 @@ interface NavItem {
   roles?: Role[];
 }
 
-const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEMS: NavItem[] = [
   {
     title: "Command Center",
     href: "/",
