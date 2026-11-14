@@ -148,6 +148,7 @@ export default async function SpreadsheetMarkEntryPage({
       initialMarks={initialMarks}
       maxTheory={currentSchedule ? parseFloat(currentSchedule.maxTheory) : 100}
       maxPractical={currentSchedule ? parseFloat(currentSchedule.maxPractical || "0") : 0}
+      passMarks={currentSchedule ? parseFloat(currentSchedule.passMarks) : 35}
       isLocked={context.isLocked}
       isScheduleLocked={!!currentSchedule?.isLocked}
       classId={currentSchedule?.classId || ""}

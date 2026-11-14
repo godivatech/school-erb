@@ -116,6 +116,12 @@ export async function saveExamMarksBatch(input: SaveExamMarksBatchInput) {
             `Grace marks cannot be negative for enrollment ${entry.enrollmentId}`
           );
         }
+
+        if (theory + practical + grace > maxTheory + maxPractical) {
+          throw new Error(
+            `Total marks (${theory + practical} + ${grace} grace) exceeds maximum possible (${maxTheory + maxPractical}) for enrollment ${entry.enrollmentId}`
+          );
+        }
       }
 
       const theoryStr =
@@ -503,6 +509,8 @@ export async function toggleLockExamSchedule(input: ToggleLockExamScheduleInput)
     .select({
       id: examSchedules.id,
       isLocked: examSchedules.isLocked,
+      maxTheoryMarks: examSchedules.maxTheoryMarks,
+      maxPracticalMarks: examSchedules.maxPracticalMarks,
     })
     .from(examSchedules)
     .innerJoin(exams, eq(examSchedules.examId, exams.id))
@@ -519,6 +527,35 @@ export async function toggleLockExamSchedule(input: ToggleLockExamScheduleInput)
   }
 
   return await db.transaction(async (tx) => {
+    if (input.isLocked) {
+      // Validate that all saved marks for this schedule are within valid limits before freezing
+      const existingMarks = await tx
+        .select({
+          theoryMarks: examMarks.theoryMarks,
+          practicalMarks: examMarks.practicalMarks,
+          graceMarks: examMarks.graceMarks,
+          attendanceStatus: examMarks.attendanceStatus,
+        })
+        .from(examMarks)
+        .where(eq(examMarks.examScheduleId, input.examScheduleId));
+
+      const maxT = parseFloat(sched.maxTheoryMarks || "0");
+      const maxP = parseFloat(sched.maxPracticalMarks || "0");
+
+      for (const m of existingMarks) {
+        if (m.attendanceStatus === "PRESENT") {
+          const th = parseFloat(m.theoryMarks || "0");
+          const pr = parseFloat(m.practicalMarks || "0");
+          const gr = parseFloat(m.graceMarks || "0");
+          if (th > maxT || pr > maxP || (th + pr + gr > maxT + maxP)) {
+            throw new Error(
+              `Cannot freeze exam schedule: One or more saved student marks exceed maximum allowed marks (Theory Max: ${maxT}, Practical Max: ${maxP}).`
+            );
+          }
+        }
+      }
+    }
+
     await tx
       .update(examSchedules)
       .set({
