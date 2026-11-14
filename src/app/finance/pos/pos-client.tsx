@@ -737,7 +737,14 @@ export function CashierPosClient({
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    const originalTitle = document.title;
+                    document.title = `Fee_Receipt_${receiptGenerated.receiptNo}_${student.admissionNo}`;
+                    window.print();
+                    setTimeout(() => {
+                      document.title = originalTitle;
+                    }, 1000);
+                  }}
                   className="h-8 text-xs bg-navy-900 text-white font-semibold gap-1.5"
                 >
                   <Printer className="h-3.5 w-3.5" />

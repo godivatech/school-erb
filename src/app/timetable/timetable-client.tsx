@@ -35,6 +35,7 @@ import {
 import { SearchableSelect, SearchOption } from "@/components/ui/searchable-select";
 import { ActionBanner } from "@/components/ui/action-banner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { cn } from "@/lib/utils";
 import {
   assignTimetableSlot,
   clearTimetableSlot,
@@ -402,8 +403,22 @@ export function TimetableClient({
     }
   };
 
+  const handlePrintTimetable = () => {
+    const originalTitle = document.title;
+    const targetLabel =
+      viewMode === "CLASS"
+        ? `Class_${allSections.find((s) => s.id === selectedSectionId)?.className}_Sec_${allSections.find((s) => s.id === selectedSectionId)?.name}`
+        : `Faculty_${allTeachers.find((t) => t.id === selectedTeacherViewId)?.name || "Teacher"}`;
+    document.title = `Timetable_${targetLabel.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   return (
-    <div className="space-y-5 animate-in fade-in duration-150">
+    <>
+      <div className={cn("space-y-5 animate-in fade-in duration-150", showPrintModal && "print:hidden")}>
       {/* Top Header & Section Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
@@ -974,13 +989,14 @@ export function TimetableClient({
         variant="danger"
         isLoading={isProcessing}
       />
+      </div>
 
       {/* Printable Weekly Timetable Modal */}
       {showPrintModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0 print:overflow-visible">
             {/* Modal Header */}
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between print:hidden">
               <div>
                 <h3 className="text-base font-bold flex items-center gap-2">
                   <Printer className="h-4 w-4 text-blue-400" />
@@ -995,7 +1011,7 @@ export function TimetableClient({
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={handlePrintTimetable}
                   className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs h-8 gap-1.5"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -1011,7 +1027,7 @@ export function TimetableClient({
             </div>
 
             {/* Document Body */}
-            <div className="p-8 overflow-y-auto space-y-6 text-slate-800 bg-white print:p-0">
+            <div className="p-8 overflow-y-auto space-y-6 text-slate-800 bg-white print:p-0 print:m-0 print:overflow-visible">
               {/* School Letterhead */}
               <div className="text-center border-b-2 border-slate-900 pb-4">
                 <h2 className="text-lg font-black tracking-wide uppercase text-slate-900">
@@ -1090,7 +1106,7 @@ export function TimetableClient({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end print:hidden">
               <Button size="sm" variant="outline" onClick={() => setShowPrintModal(false)} className="text-xs h-8">
                 Close Preview
               </Button>
@@ -1098,6 +1114,6 @@ export function TimetableClient({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

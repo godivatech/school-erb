@@ -35,6 +35,7 @@ import {
   type SectionReportCardStudent,
 } from "@/actions/exams";
 import { ActionBanner } from "@/components/ui/action-banner";
+import { cn } from "@/lib/utils";
 import { SearchableSelect, SearchOption } from "@/components/ui/searchable-select";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 
@@ -390,8 +391,18 @@ export function SpreadsheetMarkEntryClient({
     }
   };
 
+  const handlePrintBatch = () => {
+    const originalTitle = document.title;
+    document.title = `Report_Cards_${classId || "Section"}_Term_Exams`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   return (
-    <div className="space-y-4">
+    <>
+      <div className={cn("space-y-4", showBatchModal && "print:hidden")}>
       {/* Action Notification Banner */}
       {notification && (
         <ActionBanner
@@ -791,12 +802,14 @@ export function SpreadsheetMarkEntryClient({
         </div>
       )}
 
+      </div>
+
       {/* 1-Click Bulk Report Card Batch Printable Modal */}
       {showBatchModal && batchCards && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh]">
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh] print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0 print:overflow-visible">
             {/* Top Toolbar */}
-            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0">
+            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0 print:hidden">
               <div className="flex items-center gap-2">
                 <Printer className="h-4 w-4 text-emerald-400" />
                 <span className="font-bold text-xs">
@@ -806,7 +819,7 @@ export function SpreadsheetMarkEntryClient({
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={handlePrintBatch}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 h-8 px-3"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -932,6 +945,6 @@ export function SpreadsheetMarkEntryClient({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

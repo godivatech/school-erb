@@ -51,7 +51,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency, formatPhone } from "@/lib/utils";
+import { formatCurrency, formatPhone, cn } from "@/lib/utils";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { SearchableSelect, SearchOption } from "@/components/ui/searchable-select";
 import { ActionBanner } from "@/components/ui/action-banner";
@@ -531,8 +531,18 @@ export function StudentsClient({
     }
   };
 
+  const handlePrintIdCards = () => {
+    const originalTitle = document.title;
+    document.title = `Student_ID_Cards_Batch_${selectedIds.size}`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   return (
-    <div className="space-y-4">
+    <>
+      <div className={cn("space-y-4", showIdCardModal && "print:hidden")}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
@@ -1469,7 +1479,7 @@ export function StudentsClient({
 
       {/* Floating Batch Action Toolbar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border border-slate-700 animate-in fade-in slide-in-from-bottom-4 print:hidden">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-xs font-bold text-white tracking-wide">
@@ -1502,13 +1512,14 @@ export function StudentsClient({
           </button>
         </div>
       )}
+      </div>
 
       {/* Official Student Identity Cards Print Modal */}
       {showIdCardModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0 print:overflow-visible">
             {/* Modal Header */}
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between print:hidden">
               <div>
                 <h3 className="text-base font-bold flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-blue-400" />
@@ -1521,7 +1532,7 @@ export function StudentsClient({
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={handlePrintIdCards}
                   className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs h-8 gap-1.5"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -1537,7 +1548,7 @@ export function StudentsClient({
             </div>
 
             {/* Modal Scrollable Body - ID Cards Grid */}
-            <div className="p-6 overflow-y-auto space-y-6 bg-slate-100 flex-1">
+            <div className="p-6 overflow-y-auto space-y-6 bg-slate-100 flex-1 print:p-0 print:m-0 print:bg-white print:overflow-visible">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">
                 {students
                   .filter((s) => selectedIds.has(s.id))
@@ -1639,7 +1650,7 @@ export function StudentsClient({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+            <div className="px-6 py-3 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 print:hidden">
               <span>Standard 85.60 × 53.98 mm printable dimensions</span>
               <Button size="sm" variant="outline" onClick={() => setShowIdCardModal(false)} className="text-xs h-7">
                 Close Preview
@@ -1648,6 +1659,6 @@ export function StudentsClient({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

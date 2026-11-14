@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 
 export interface AuditLogItem {
   id: string;
@@ -158,8 +159,18 @@ export function AuditClient({ logs }: AuditClientProps) {
 
   const { paginatedItems: paginatedLogs, paginationProps: auditPagination } = usePagination(filteredLogs, 10);
 
+  const handlePrintAuditLogs = () => {
+    const originalTitle = document.title;
+    document.title = `Audit_Log_Extract_${new Date().toISOString().split("T")[0]}`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   return (
-    <div className="space-y-5">
+    <>
+      <div className={cn("space-y-5", showExportModal && "print:hidden")}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
@@ -531,13 +542,14 @@ export function AuditClient({ logs }: AuditClientProps) {
           </div>
         </div>
       )}
+      </div>
 
       {/* Official Export Audit Log to PDF Modal (Feature 13) */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl max-w-5xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh]">
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div className="bg-white rounded-lg shadow-2xl max-w-5xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh] print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0 print:overflow-visible">
             {/* Top Toolbar */}
-            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0">
+            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0 print:hidden">
               <div className="flex items-center gap-2 flex-wrap">
                 <Printer className="h-4 w-4 text-emerald-400" />
                 <span className="font-bold text-xs">
@@ -547,7 +559,7 @@ export function AuditClient({ logs }: AuditClientProps) {
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={handlePrintAuditLogs}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 h-8 px-3"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -563,7 +575,7 @@ export function AuditClient({ logs }: AuditClientProps) {
             </div>
 
             {/* Printable Document Container */}
-            <div className="p-8 overflow-y-auto bg-white print:p-8">
+            <div className="p-8 overflow-y-auto bg-white print:p-0 print:m-0 print:overflow-visible">
               {/* School Letterhead */}
               <div className="text-center border-b-2 border-slate-900 pb-4 mb-5">
                 <div className="flex items-center justify-center gap-2 mb-1">
@@ -662,6 +674,6 @@ export function AuditClient({ logs }: AuditClientProps) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

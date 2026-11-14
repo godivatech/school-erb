@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { admitStudentWithFamilyLink, lookupFamilyByPhone } from "@/actions/students";
 
 export interface OccupiedRoll {
@@ -366,8 +367,19 @@ export function NewStudentAdmissionClient({
     }
   };
 
+  const handlePrintAdmissionSlip = () => {
+    const originalTitle = document.title;
+    const cleanName = `${formData.firstName}_${formData.lastName}`.replace(/[^a-zA-Z0-9]/g, "_");
+    document.title = `Admission_Record_${formData.admissionNo}_${cleanName}`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-5">
+    <>
+      <div className={cn("max-w-4xl mx-auto space-y-5", showAdmissionSlip && "print:hidden")}>
       {/* Back button & Page Header */}
       <div className="flex items-center justify-between border-b border-slate-200 pb-3">
         <div className="flex items-center gap-3">
@@ -894,13 +906,14 @@ export function NewStudentAdmissionClient({
           </Button>
         </div>
       </form>
+      </div>
 
       {/* Official Admission Application Record / Form Modal */}
       {showAdmissionSlip && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0 print:overflow-visible">
             {/* Modal Header Actions */}
-            <div className="px-6 py-3 bg-slate-900 text-white flex items-center justify-between">
+            <div className="px-6 py-3 bg-slate-900 text-white flex items-center justify-between print:hidden">
               <span className="font-bold text-sm flex items-center gap-2">
                 <FileText className="h-4 w-4 text-emerald-400" />
                 Official Student Admission Form & Enrollment Record
@@ -908,7 +921,7 @@ export function NewStudentAdmissionClient({
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={handlePrintAdmissionSlip}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs h-8 gap-1.5"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -924,7 +937,7 @@ export function NewStudentAdmissionClient({
             </div>
 
             {/* Document Body */}
-            <div className="p-8 overflow-y-auto space-y-6 text-slate-800 bg-white print:p-0">
+            <div className="p-8 overflow-y-auto space-y-6 text-slate-800 bg-white print:p-0 print:m-0 print:overflow-visible">
               {/* Letterhead */}
               <div className="text-center border-b-2 border-slate-900 pb-4">
                 <h2 className="text-lg font-black tracking-wide uppercase text-slate-900">
@@ -1059,7 +1072,7 @@ export function NewStudentAdmissionClient({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end print:hidden">
               <Button size="sm" variant="outline" onClick={() => setShowAdmissionSlip(false)} className="text-xs h-8">
                 Close Record
               </Button>
@@ -1067,6 +1080,6 @@ export function NewStudentAdmissionClient({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

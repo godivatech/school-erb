@@ -34,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import {
   markReceiptBouncedOrVoid,
   createFeeHead,
@@ -327,8 +327,18 @@ export function FinanceClient({
     }
   };
 
+  const handlePrintReceipt = (receipt: ReceiptRow) => {
+    const originalTitle = document.title;
+    document.title = `Fee_Receipt_${receipt.receiptNo}_${receipt.admissionNo}`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   return (
-    <div className="space-y-5">
+    <>
+      <div className={cn("space-y-5", receiptToPrint && "print:hidden")}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
@@ -787,11 +797,12 @@ export function FinanceClient({
           </div>
         </div>
       )}
+      </div>
 
       {/* MODAL: Printable Receipt */}
       {receiptToPrint && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-2xl border border-slate-300 w-full max-w-lg p-6 space-y-4 animate-in fade-in zoom-in-95 print:p-0 print:border-none print:shadow-none">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div className="bg-white rounded-lg shadow-2xl border border-slate-300 w-full max-w-lg p-6 space-y-4 animate-in fade-in zoom-in-95 print:p-0 print:m-0 print:border-none print:shadow-none print:max-w-none print:w-full print:overflow-visible">
             {/* Non-print toolbar */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-3 print:hidden">
               <div className="flex items-center gap-2 flex-wrap">
@@ -801,7 +812,7 @@ export function FinanceClient({
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={() => handlePrintReceipt(receiptToPrint)}
                   className="h-7 text-xs bg-navy-900 text-white font-semibold gap-1"
                 >
                   <Printer className="h-3 w-3" />
@@ -1108,6 +1119,6 @@ export function FinanceClient({
         variant={confirmAction?.variant || "danger"}
         isLoading={!!loadingId}
       />
-    </div>
+    </>
   );
 }
