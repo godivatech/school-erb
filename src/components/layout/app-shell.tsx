@@ -78,7 +78,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden print:overflow-visible print:h-auto">
+        <div className="flex-1 flex flex-col min-w-0 w-full h-full overflow-hidden print:overflow-visible print:h-auto">
           {/* Top Sticky 48px Context Bar */}
           <div className="print:hidden">
             <TopContextBar
@@ -86,9 +86,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             />
           </div>
 
-          {/* Primary Viewport Area */}
-          <main className="flex-1 min-h-0 overflow-y-auto pb-20 md:pb-8 p-4 md:p-6 bg-slate-50 print:p-0 print:m-0 print:bg-white print:overflow-visible flex flex-col justify-between">
-            <div className="flex-1">
+          {/* Primary Viewport Area (Strictly overflow-x-hidden so viewport NEVER shifts horizontally) */}
+          <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-20 md:pb-8 p-3 sm:p-4 md:p-6 bg-slate-50 print:p-0 print:m-0 print:bg-white print:overflow-visible flex flex-col justify-between w-full max-w-full min-w-0">
+            <div className="flex-1 min-w-0 w-full max-w-full">
               {children}
             </div>
 

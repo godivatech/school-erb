@@ -1012,8 +1012,8 @@ export function AcademicsClient({
     <div className="space-y-5">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
-        <div>
-          <div className="flex items-center gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
               Academic Structure & Setup
             </h1>
@@ -1036,7 +1036,7 @@ export function AcademicsClient({
             variant="outline"
             onClick={openPromoteModal}
             disabled={isProcessing}
-            className="gap-1.5 text-xs h-8 font-semibold border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm"
+            className="gap-1.5 text-xs h-8 font-semibold border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm shrink-0"
           >
             <GraduationCap className="h-3.5 w-3.5 text-indigo-600" />
             <span>Promote Section Wizard</span>
@@ -1047,7 +1047,7 @@ export function AcademicsClient({
             variant="outline"
             onClick={handleCloneStructure}
             disabled={isLocked || isProcessing}
-            className="gap-1.5 text-xs h-8"
+            className="gap-1.5 text-xs h-8 shrink-0"
           >
             <Copy className="h-3.5 w-3.5 text-slate-600" />
             <span>Clone Structure</span>
@@ -1057,7 +1057,7 @@ export function AcademicsClient({
             size="sm"
             onClick={() => setShowAddClass(true)}
             disabled={isLocked}
-            className="gap-1.5 text-xs h-8 bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-sm"
+            className="gap-1.5 text-xs h-8 bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-sm shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>+ Add Class & Section</span>
