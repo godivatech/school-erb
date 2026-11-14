@@ -39,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import {
   runMonthlyPayroll,
   approveStaffLeaveAndCreateSubstitutions,
@@ -585,8 +585,29 @@ export function PayrollClient({
     }));
   }, [staffDirectory]);
 
+  const isPrintingModalOpen = Boolean(selectedPayslipStaff || showForm16Modal);
+
+  const handlePrintPayslip = (staffName: string, empCode: string, period: string) => {
+    const originalTitle = document.title;
+    document.title = `Payslip_${empCode}_${staffName.replace(/[^a-zA-Z0-9]/g, "_")}_${period}`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
+  const handlePrintForm16 = (staffName: string, empCode: string) => {
+    const originalTitle = document.title;
+    document.title = `Form16_${empCode}_${staffName.replace(/[^a-zA-Z0-9]/g, "_")}_FY2026-27`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   return (
-    <div className="space-y-5">
+    <>
+      <div className={cn("space-y-5", isPrintingModalOpen && "print:hidden")}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
@@ -1699,13 +1720,14 @@ export function PayrollClient({
         }}
         onCancel={() => setConfirmAction(null)}
       />
+      </div>
 
       {/* Official Crescent Matriculation School Payslip Modal (Features 8 & 9) */}
       {selectedPayslipStaff && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh]">
-            {/* Top Toolbar */}
-            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0">
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh] print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0 print:overflow-visible">
+            {/* Top Toolbar - HIDDEN IN PRINT/PDF */}
+            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0 print:hidden">
               <div className="flex items-center gap-2 flex-wrap">
                 <Printer className="h-4 w-4 text-emerald-400" />
                 <span className="font-bold text-xs">
@@ -1715,7 +1737,13 @@ export function PayrollClient({
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={() =>
+                    handlePrintPayslip(
+                      selectedPayslipStaff.name,
+                      selectedPayslipStaff.empCode,
+                      monthYear
+                    )
+                  }
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 h-8 px-3"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -1731,7 +1759,7 @@ export function PayrollClient({
             </div>
 
             {/* Printable Payslip Container */}
-            <div className="p-8 overflow-y-auto bg-white print:p-8">
+            <div className="p-8 overflow-y-auto bg-white print:p-0 print:m-0 print:overflow-visible">
               {/* School Letterhead */}
               <div className="text-center border-b-2 border-slate-900 pb-4 mb-5">
                 <div className="flex items-center justify-center gap-2 mb-1">
@@ -1910,10 +1938,10 @@ export function PayrollClient({
 
       {/* Annual Salary Statement / Form 16 Summary Modal */}
       {showForm16Modal && selectedForm16Staff && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh]">
-            {/* Top Toolbar */}
-            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0">
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh] print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0 print:overflow-visible">
+            {/* Top Toolbar - HIDDEN IN PRINT/PDF */}
+            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0 print:hidden">
               <div className="flex items-center gap-2 flex-wrap">
                 <FileText className="h-4 w-4 text-purple-400" />
                 <span className="font-bold text-xs">
@@ -1923,7 +1951,7 @@ export function PayrollClient({
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={() => handlePrintForm16(selectedForm16Staff.name, selectedForm16Staff.empCode)}
                   className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs gap-1.5 h-8 px-3"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -1939,7 +1967,7 @@ export function PayrollClient({
             </div>
 
             {/* Document Body */}
-            <div className="p-8 overflow-y-auto space-y-5 text-slate-800 bg-white print:p-0">
+            <div className="p-8 overflow-y-auto space-y-5 text-slate-800 bg-white print:p-0 print:m-0 print:overflow-visible">
               {/* Letterhead */}
               <div className="text-center border-b-2 border-slate-900 pb-3">
                 <h2 className="text-lg font-black tracking-wide uppercase text-slate-900">
@@ -2055,8 +2083,8 @@ export function PayrollClient({
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+            {/* Modal Footer - HIDDEN ON PRINT */}
+            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end print:hidden">
               <Button size="sm" variant="outline" onClick={() => setShowForm16Modal(false)} className="text-xs h-8">
                 Close Statement
               </Button>
@@ -2064,6 +2092,6 @@ export function PayrollClient({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

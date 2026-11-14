@@ -42,6 +42,7 @@ import { submitSectionAttendance, updateStudentLeaveStatus } from "@/actions/att
 import { LockOverrideDialog } from "@/components/layout/lock-override-dialog";
 import { SearchableSelect, SearchOption } from "@/components/ui/searchable-select";
 import { ActionBanner } from "@/components/ui/action-banner";
+import { cn } from "@/lib/utils";
 
 export interface StudentAttendanceRow {
   enrollmentId: string;
@@ -445,7 +446,8 @@ export function AttendanceClient({
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4">
+    <>
+      <div className={cn("max-w-6xl mx-auto space-y-4", showPrintRegisterModal && "print:hidden")}>
       {/* Top Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
@@ -1289,15 +1291,16 @@ export function AttendanceClient({
         operationDescription={`Submit Section Attendance for Section on ${currentDate}`}
         onConfirmOverride={handleConfirmOverride}
       />
+      </div>
 
       {/* ======================================================================= */}
       {/* OFFICIAL DAILY MASTER ATTENDANCE PRINT / PDF MODAL                      */}
       {/* ======================================================================= */}
       {showPrintRegisterModal && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh]">
-            {/* Top Toolbar */}
-            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0">
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 p-2 sm:p-6 overflow-y-auto print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:w-full">
+          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh] print:max-w-none print:w-full print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0 print:overflow-visible">
+            {/* Top Toolbar - HIDDEN IN PRINT/PDF */}
+            <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0 print:hidden">
               <div className="flex items-center gap-2">
                 <Printer className="h-4 w-4 text-emerald-400" />
                 <span className="font-bold text-xs">
@@ -1307,7 +1310,14 @@ export function AttendanceClient({
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    const originalTitle = document.title;
+                    document.title = `Attendance_Master_Register_${currentDate}`;
+                    window.print();
+                    setTimeout(() => {
+                      document.title = originalTitle;
+                    }, 1000);
+                  }}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 h-8 px-3"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -1323,7 +1333,7 @@ export function AttendanceClient({
             </div>
 
             {/* Printable Content */}
-            <div className="p-8 overflow-y-auto space-y-6 print:p-0">
+            <div className="p-8 overflow-y-auto space-y-6 print:p-0 print:m-0 print:overflow-visible">
               {/* Official School Letterhead */}
               <div className="text-center border-b-2 border-slate-900 pb-4">
                 <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">
@@ -1411,6 +1421,6 @@ export function AttendanceClient({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
