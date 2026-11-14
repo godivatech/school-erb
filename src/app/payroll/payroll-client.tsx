@@ -168,6 +168,8 @@ export function PayrollClient({
     appraisalReason: "",
     originalBasic: 30000,
     originalHra: 6000,
+    hikeMode: "AMOUNT" as "AMOUNT" | "PERCENT",
+    hikeValue: "",
   });
 
   const handleOpenEditStaff = (staff: StaffDirectoryItem) => {
@@ -187,8 +189,77 @@ export function PayrollClient({
       appraisalReason: "",
       originalBasic: staff.basicSalary,
       originalHra: staff.hra,
+      hikeMode: "AMOUNT",
+      hikeValue: "",
     });
     setIsEditStaffOpen(true);
+  };
+
+  const handleHikeChange = (val: string, mode: "AMOUNT" | "PERCENT" = editStaffForm.hikeMode) => {
+    const num = parseFloat(val);
+    let newBasic = editStaffForm.originalBasic;
+
+    if (!isNaN(num)) {
+      if (mode === "AMOUNT") {
+        newBasic = Math.max(0, Math.round(editStaffForm.originalBasic + num));
+      } else {
+        newBasic = Math.max(0, Math.round(editStaffForm.originalBasic + (editStaffForm.originalBasic * num) / 100));
+      }
+    }
+
+    const calculatedHike = newBasic - editStaffForm.originalBasic;
+    setEditStaffForm((prev) => ({
+      ...prev,
+      hikeMode: mode,
+      hikeValue: val,
+      basicSalary: newBasic,
+      appraisalReason:
+        calculatedHike > 0
+          ? `Annual Appraisal: +₹${calculatedHike.toLocaleString()}/month hike to Basic Salary`
+          : prev.appraisalReason,
+    }));
+  };
+
+  const handleHikeModeChange = (newMode: "AMOUNT" | "PERCENT") => {
+    const currentDiff = editStaffForm.basicSalary - editStaffForm.originalBasic;
+    let newHikeVal = "";
+    if (currentDiff !== 0) {
+      if (newMode === "AMOUNT") {
+        newHikeVal = String(currentDiff);
+      } else {
+        newHikeVal = ((currentDiff / editStaffForm.originalBasic) * 100).toFixed(1);
+      }
+    }
+    setEditStaffForm((prev) => ({
+      ...prev,
+      hikeMode: newMode,
+      hikeValue: newHikeVal,
+    }));
+  };
+
+  const handleBasicSalaryChange = (newBasicVal: number) => {
+    const safeVal = Math.max(0, isNaN(newBasicVal) ? 0 : newBasicVal);
+    const diff = safeVal - editStaffForm.originalBasic;
+    setEditStaffForm((prev) => ({
+      ...prev,
+      basicSalary: safeVal,
+      hikeValue:
+        diff !== 0
+          ? prev.hikeMode === "AMOUNT"
+            ? String(diff)
+            : ((diff / prev.originalBasic) * 100).toFixed(1)
+          : "",
+    }));
+  };
+
+  const handleResetHike = () => {
+    setEditStaffForm((prev) => ({
+      ...prev,
+      basicSalary: prev.originalBasic,
+      hra: prev.originalHra,
+      hikeValue: "",
+      appraisalReason: "",
+    }));
   };
 
   const handleSaveStaffSubmit = async (e: React.FormEvent) => {
@@ -1324,6 +1395,80 @@ export function PayrollClient({
                     )}
                   </div>
 
+                  {/* Dedicated Appraisal / Hike Amount Entry */}
+                  <div className="bg-white p-3 rounded-lg border border-blue-200/90 shadow-2xs space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="text-[11px] font-bold text-slate-900 flex items-center gap-1.5">
+                        <TrendingUp className="h-3.5 w-3.5 text-blue-700" />
+                        <span>Enter Appraisal Hike Amount / %</span>
+                      </label>
+                      <div className="flex items-center rounded border border-slate-300 p-0.5 bg-slate-100 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => handleHikeModeChange("AMOUNT")}
+                          className={`px-2.5 py-0.5 rounded font-bold transition-colors ${
+                            editStaffForm.hikeMode === "AMOUNT"
+                              ? "bg-blue-900 text-white shadow-2xs"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          Hike Amount (₹)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleHikeModeChange("PERCENT")}
+                          className={`px-2.5 py-0.5 rounded font-bold transition-colors ${
+                            editStaffForm.hikeMode === "PERCENT"
+                              ? "bg-blue-900 text-white shadow-2xs"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          Percentage (%)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-2.5 top-2 text-xs font-bold text-slate-500">
+                          {editStaffForm.hikeMode === "AMOUNT" ? "+ ₹" : "+"}
+                        </span>
+                        <Input
+                          type="number"
+                          step={editStaffForm.hikeMode === "AMOUNT" ? "500" : "0.5"}
+                          placeholder={editStaffForm.hikeMode === "AMOUNT" ? "e.g. 5000" : "e.g. 10"}
+                          value={editStaffForm.hikeValue}
+                          onChange={(e) => handleHikeChange(e.target.value)}
+                          className="h-8 pl-9 pr-6 text-xs font-mono font-bold bg-white border-blue-300 focus:border-blue-500"
+                        />
+                        {editStaffForm.hikeMode === "PERCENT" && (
+                          <span className="absolute right-2.5 top-2 text-xs font-bold text-slate-400">
+                            %
+                          </span>
+                        )}
+                      </div>
+
+                      {diff !== 0 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={handleResetHike}
+                          className="h-8 text-xs border-slate-300 hover:bg-slate-100 text-slate-600 px-2.5 shrink-0"
+                          title="Reset to original salary"
+                        >
+                          Reset
+                        </Button>
+                      )}
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 leading-tight">
+                      {editStaffForm.hikeMode === "AMOUNT"
+                        ? `Typing a hike amount (e.g. 5,000) automatically increases Basic Salary from ₹${editStaffForm.originalBasic.toLocaleString()} to ₹${editStaffForm.basicSalary.toLocaleString()}.`
+                        : `Typing a hike % (e.g. 10%) automatically computes the increment on Basic Salary (₹${editStaffForm.originalBasic.toLocaleString()}).`}
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[11px] font-semibold text-slate-700">Basic Salary (₹) *</label>
@@ -1333,7 +1478,7 @@ export function PayrollClient({
                         step="500"
                         required
                         value={editStaffForm.basicSalary}
-                        onChange={(e) => setEditStaffForm({ ...editStaffForm, basicSalary: Number(e.target.value) })}
+                        onChange={(e) => handleBasicSalaryChange(Number(e.target.value))}
                         className="h-8 text-xs font-mono font-bold bg-white"
                       />
                     </div>
@@ -1356,6 +1501,14 @@ export function PayrollClient({
                       <span className="text-slate-400 text-[10px] block">Previous Package:</span>
                       <span className="font-mono text-slate-600 font-semibold">₹{oldTotal.toLocaleString()}</span>
                     </div>
+                    {diff !== 0 && (
+                      <div className="text-center">
+                        <span className="text-slate-400 text-[10px] block">Appraisal Hike:</span>
+                        <span className={`font-mono font-bold ${diff > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                          {diff > 0 ? `+₹${diff.toLocaleString()}` : `-₹${Math.abs(diff).toLocaleString()}`} ({pct}%)
+                        </span>
+                      </div>
+                    )}
                     <div className="text-right">
                       <span className="text-slate-400 text-[10px] block">New Monthly Gross:</span>
                       <span className="font-mono text-blue-900 font-bold text-sm">₹{newTotal.toLocaleString()}</span>
