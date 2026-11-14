@@ -36,7 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { payStudentFeeOnline } from "@/actions/finance";
 import { generateReportCardPdf } from "@/actions/exams";
 import { applyStudentLeave } from "@/actions/attendance";
@@ -138,6 +138,10 @@ export function ParentPortalClient({
   );
 
   const currentDues = duesByStudent[currentStudent?.id || ""] || { totalDue: 0, invoices: [] };
+
+  const [activeSection, setActiveSection] = React.useState<
+    "all" | "fees" | "attendance" | "homework" | "leaves"
+  >("all");
 
   const [paymentProcessing, setPaymentProcessing] = React.useState(false);
   const [paymentNotification, setPaymentNotification] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -353,319 +357,412 @@ export function ParentPortalClient({
 
       {/* Main Selected Student Content */}
       {currentStudent && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Fee & Invoices Column (Span 2) */}
-          <div className="md:col-span-2 space-y-5">
-            {/* Fee Dues Card */}
-            <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-navy-600" />
-                  <h2 className="text-sm font-bold text-slate-900">
-                    Fee Statement & 1-Click Payment
-                  </h2>
-                </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <Link
-                    href={`/students/${currentStudent.id}/ledger`}
-                    className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 hover:underline"
-                  >
-                    <Receipt className="h-3.5 w-3.5" />
-                    <span>Receipt History & Statement &rarr;</span>
-                  </Link>
-                  <div className="text-xs font-semibold text-slate-700">
-                    Total Pending:{" "}
-                    <span className="text-red-700 font-tabular font-bold">
-                      ₹{currentDues.totalDue.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
+        <div className="space-y-4">
+          {/* Quick Module Section Navigation Tabs */}
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar border-b border-slate-200 pb-2">
+            <button
+              type="button"
+              onClick={() => setActiveSection("all")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors shrink-0 whitespace-nowrap",
+                activeSection === "all"
+                  ? "bg-navy-900 text-white shadow-xs"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              )}
+            >
+              <span>Overview (All)</span>
+            </button>
 
-              {currentDues.invoices.length > 0 ? (
-                <div className="space-y-3">
-                  {currentDues.invoices.map((inv) => {
-                    const net = parseFloat(inv.netAmount);
-                    const paid = parseFloat(inv.paidAmount);
-                    const due = Math.max(0, net - paid);
+            <button
+              type="button"
+              onClick={() => setActiveSection("fees")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors shrink-0 whitespace-nowrap",
+                activeSection === "fees"
+                  ? "bg-navy-900 text-white shadow-xs"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              )}
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              <span>Fees & Invoices</span>
+              {currentDues.totalDue > 0 && (
+                <Badge variant="danger" className="text-[9px] px-1 py-0 ml-0.5">
+                  ₹{currentDues.totalDue.toLocaleString()}
+                </Badge>
+              )}
+            </button>
 
-                    return (
-                      <div
-                        key={inv.id}
-                        className="p-3.5 border border-slate-200 rounded-lg bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            <button
+              type="button"
+              onClick={() => setActiveSection("attendance")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors shrink-0 whitespace-nowrap",
+                activeSection === "attendance"
+                  ? "bg-navy-900 text-white shadow-xs"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              )}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Attendance Log</span>
+              <span className="text-[10px] text-emerald-600 font-bold ml-0.5">92%</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSection("homework")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors shrink-0 whitespace-nowrap",
+                activeSection === "homework"
+                  ? "bg-navy-900 text-white shadow-xs"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              )}
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              <span>Homework Diary</span>
+              {homeworkList.length > 0 && (
+                <Badge variant="neutral" className="text-[9px] px-1 py-0 ml-0.5">
+                  {homeworkList.length}
+                </Badge>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSection("leaves")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors shrink-0 whitespace-nowrap",
+                activeSection === "leaves"
+                  ? "bg-navy-900 text-white shadow-xs"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              )}
+            >
+              <CalendarPlus className="h-3.5 w-3.5" />
+              <span>Apply Leave</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Fee & Invoices Column (Span 2) */}
+            <div className="md:col-span-2 space-y-5">
+              {/* Fee Dues Card */}
+              {(activeSection === "all" || activeSection === "fees") && (
+                <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-navy-600" />
+                      <h2 className="text-sm font-bold text-slate-900">
+                        Fee Statement & 1-Click Payment
+                      </h2>
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Link
+                        href={`/students/${currentStudent.id}/ledger`}
+                        className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 hover:underline"
                       >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-slate-800">{inv.installmentLabel}</span>
-                            <Badge variant={inv.status === "UNPAID" ? "danger" : "warning"} className="text-[10px]">
-                              {inv.status}
+                        <Receipt className="h-3.5 w-3.5" />
+                        <span>Receipt History & Statement &rarr;</span>
+                      </Link>
+                      <div className="text-xs font-semibold text-slate-700">
+                        Total Pending:{" "}
+                        <span className="text-red-700 font-tabular font-bold">
+                          ₹{currentDues.totalDue.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {currentDues.invoices.length > 0 ? (
+                    <div className="space-y-3 max-h-[380px] overflow-y-auto no-scrollbar pr-1 border border-slate-100 rounded-lg p-1.5 bg-slate-50/40">
+                      {currentDues.invoices.map((inv) => {
+                        const net = parseFloat(inv.netAmount);
+                        const paid = parseFloat(inv.paidAmount);
+                        const due = Math.max(0, net - paid);
+
+                        return (
+                          <div
+                            key={inv.id}
+                            className="p-3.5 border border-slate-200 rounded-lg bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xs"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs text-slate-800">{inv.installmentLabel}</span>
+                                <Badge variant={inv.status === "UNPAID" ? "danger" : "warning"} className="text-[10px]">
+                                  {inv.status}
+                                </Badge>
+                              </div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">
+                                Invoice: {inv.invoiceNo} | Due Date: {inv.dueDate}
+                              </div>
+                              <div className="text-xs font-tabular mt-1 text-slate-700">
+                                Net: ₹{net.toLocaleString()} | Paid: ₹{paid.toLocaleString()} |{" "}
+                                <span className="font-bold text-red-700">Due: ₹{due.toLocaleString()}</span>
+                              </div>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              onClick={() => handlePayNow(inv.id, due)}
+                              disabled={paymentProcessing}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 self-start sm:self-auto shrink-0"
+                            >
+                              <CreditCard className="h-3.5 w-3.5" />
+                              <span>Pay ₹{due.toLocaleString()}</span>
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-md text-xs text-emerald-800 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>All fees are fully paid for {currentStudent.firstName}. No outstanding dues!</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Attendance & Academics Card */}
+              {(activeSection === "all" || activeSection === "attendance") && (
+                <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-navy-600" />
+                      <h2 className="text-sm font-bold text-slate-900">
+                        Recent Attendance Log
+                      </h2>
+                    </div>
+                    <Badge variant="success" className="text-[10px]">
+                      Good Standing (92%)
+                    </Badge>
+                  </div>
+
+                  {recentAttendance.length > 0 ? (
+                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-md">
+                      {recentAttendance.map((att, i) => (
+                        <div key={i} className="p-2.5 flex items-center justify-between text-xs">
+                          <span className="font-tabular text-slate-700">{att.date}</span>
+                          <Badge
+                            variant={att.status === "PRESENT" ? "success" : att.status === "LATE" ? "warning" : "danger"}
+                            className="text-[10px]"
+                          >
+                            {att.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-500 py-3 text-center">
+                      No attendance records logged for current term yet.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Daily Homework Diary Card */}
+              {(activeSection === "all" || activeSection === "homework") && (
+                <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-indigo-600" />
+                      <h2 className="text-sm font-bold text-slate-900">
+                        Daily Homework Diary
+                      </h2>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200">
+                      {homeworkList.length} Assigned Task{homeworkList.length === 1 ? "" : "s"}
+                    </Badge>
+                  </div>
+
+                  {homeworkList.length > 0 ? (
+                    <div className="space-y-3">
+                      {homeworkList.map((hw) => (
+                        <div
+                          key={hw.id}
+                          className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5 text-xs hover:border-slate-300 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="font-bold text-slate-900 text-xs">{hw.title}</span>
+                              <div className="text-[11px] text-indigo-700 font-semibold mt-0.5">
+                                {hw.subjectName} ({hw.subjectCode}) • Teacher: {hw.teacherName || "Subject Teacher"}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] font-mono bg-white">
+                              Due: {hw.dueDate}
                             </Badge>
                           </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">
-                            Invoice: {inv.invoiceNo} | Due Date: {inv.dueDate}
-                          </div>
-                          <div className="text-xs font-tabular mt-1 text-slate-700">
-                            Net: ₹{net.toLocaleString()} | Paid: ₹{paid.toLocaleString()} |{" "}
-                            <span className="font-bold text-red-700">Due: ₹{due.toLocaleString()}</span>
+
+                          <p className="text-slate-600 leading-relaxed text-[11px] pt-1">
+                            {hw.description}
+                          </p>
+
+                          <div className="text-[10px] text-slate-400 font-tabular pt-1 border-t border-slate-200 flex items-center justify-between">
+                            <span>Assigned: {hw.assignedDate}</span>
+                            {hw.attachmentUrl && (
+                              <a
+                                href={hw.attachmentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-blue-600 hover:underline font-semibold"
+                              >
+                                Download Worksheet 📎
+                              </a>
+                            )}
                           </div>
                         </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-400 py-4 text-center italic bg-slate-50 rounded border">
+                      No pending homework tasks posted for {currentStudent.className} - {currentStudent.sectionName} today.
+                    </div>
+                  )}
+                </div>
+              )}
 
+              {/* Apply Student Leave Card */}
+              {(activeSection === "all" || activeSection === "leaves") && (
+                <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <CalendarPlus className="h-4 w-4 text-amber-600" />
+                      <h2 className="text-sm font-bold text-slate-900">
+                        Apply Student Leave
+                      </h2>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowLeaveForm(!showLeaveForm)}
+                      className="text-xs h-7 gap-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+                    >
+                      <CalendarPlus className="h-3.5 w-3.5" />
+                      <span>{showLeaveForm ? "Close Form" : "+ Apply for Leave"}</span>
+                    </Button>
+                  </div>
+
+                  {leaveFeedback && (
+                    <ActionBanner
+                      type={leaveFeedback.type}
+                      message={leaveFeedback.message}
+                      onClose={() => setLeaveFeedback(null)}
+                    />
+                  )}
+
+                  {/* Leave Application Form */}
+                  {showLeaveForm && (
+                    <form
+                      onSubmit={handleApplyLeave}
+                      className="p-4 bg-amber-50/50 border border-amber-200 rounded-lg space-y-3 animate-in fade-in"
+                    >
+                      <div className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                        New Leave Notice for {currentStudent.firstName}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-600 block">Leave Category</label>
+                          <select
+                            value={leaveType}
+                            onChange={(e) => setLeaveType(e.target.value as any)}
+                            className="w-full h-8 text-xs rounded border border-slate-300 bg-white px-2 mt-0.5"
+                          >
+                            <option value="MEDICAL">Medical Leave (Doctor Advised)</option>
+                            <option value="PLANNED">Planned (Family Function / Travel)</option>
+                            <option value="CASUAL">Casual / Personal</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-600 block">From Date</label>
+                          <Input
+                            type="date"
+                            value={leaveStartDate}
+                            onChange={(e) => setLeaveStartDate(e.target.value)}
+                            className="text-xs h-8 bg-white mt-0.5"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-600 block">To Date</label>
+                          <Input
+                            type="date"
+                            value={leaveEndDate}
+                            onChange={(e) => setLeaveEndDate(e.target.value)}
+                            className="text-xs h-8 bg-white mt-0.5"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-semibold text-slate-600 block">Detailed Reason</label>
+                        <Input
+                          value={leaveReason}
+                          onChange={(e) => setLeaveReason(e.target.value)}
+                          placeholder="e.g. High fever with doctor rest advised..."
+                          className="text-xs h-8 bg-white mt-0.5"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-1 border-t border-amber-200">
                         <Button
                           size="sm"
-                          onClick={() => handlePayNow(inv.id, due)}
-                          disabled={paymentProcessing}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 self-start sm:self-auto"
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowLeaveForm(false)}
+                          className="text-xs h-7"
                         >
-                          <CreditCard className="h-3.5 w-3.5" />
-                          <span>Pay ₹{due.toLocaleString()}</span>
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          type="submit"
+                          disabled={isApplyingLeave}
+                          className="text-xs h-7 bg-amber-700 hover:bg-amber-800 text-white font-semibold"
+                        >
+                          {isApplyingLeave ? "Submitting..." : "Notify Class Teacher"}
                         </Button>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-md text-xs text-emerald-800 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>All fees are fully paid for {currentStudent.firstName}. No outstanding dues!</span>
-                </div>
-              )}
-            </div>
+                    </form>
+                  )}
 
-            {/* Attendance & Academics Card */}
-            <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-navy-600" />
-                  <h2 className="text-sm font-bold text-slate-900">
-                    Recent Attendance Log
-                  </h2>
-                </div>
-                <Badge variant="success" className="text-[10px]">
-                  Good Standing (92%)
-                </Badge>
-              </div>
+                  {/* History of Applied Leaves */}
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Submitted Leave Requests
+                    </h3>
 
-              {recentAttendance.length > 0 ? (
-                <div className="divide-y divide-slate-100 border border-slate-200 rounded-md">
-                  {recentAttendance.map((att, i) => (
-                    <div key={i} className="p-2.5 flex items-center justify-between text-xs">
-                      <span className="font-tabular text-slate-700">{att.date}</span>
-                      <Badge
-                        variant={att.status === "PRESENT" ? "success" : att.status === "LATE" ? "warning" : "danger"}
-                        className="text-[10px]"
-                      >
-                        {att.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-xs text-slate-500 py-3 text-center">
-                  No attendance records logged for current term yet.
-                </div>
-              )}
-            </div>
-
-            {/* Daily Homework Diary Card */}
-            <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-indigo-600" />
-                  <h2 className="text-sm font-bold text-slate-900">
-                    Daily Homework Diary
-                  </h2>
-                </div>
-                <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200">
-                  {homeworkList.length} Assigned Task{homeworkList.length === 1 ? "" : "s"}
-                </Badge>
-              </div>
-
-              {homeworkList.length > 0 ? (
-                <div className="space-y-3">
-                  {homeworkList.map((hw) => (
-                    <div
-                      key={hw.id}
-                      className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5 text-xs hover:border-slate-300 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <span className="font-bold text-slate-900 text-xs">{hw.title}</span>
-                          <div className="text-[11px] text-indigo-700 font-semibold mt-0.5">
-                            {hw.subjectName} ({hw.subjectCode}) • Teacher: {hw.teacherName || "Subject Teacher"}
+                    {appliedLeaves.length > 0 ? (
+                      <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg">
+                        {appliedLeaves.map((l) => (
+                          <div key={l.id} className="p-3 flex items-center justify-between text-xs hover:bg-slate-50">
+                            <div className="space-y-0.5">
+                              <div className="font-semibold text-slate-900">
+                                {l.leaveType} Leave: {l.reason}
+                              </div>
+                              <div className="text-[10px] text-slate-500 font-tabular">
+                                Duration: {l.startDate} to {l.endDate}
+                              </div>
+                            </div>
+                            <Badge
+                              variant={l.status === "APPROVED" ? "success" : l.status === "REJECTED" ? "danger" : "warning"}
+                              className="text-[10px]"
+                            >
+                              {l.status === "PENDING" ? "Teacher Review Pending" : l.status}
+                            </Badge>
                           </div>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] font-mono bg-white">
-                          Due: {hw.dueDate}
-                        </Badge>
+                        ))}
                       </div>
-
-                      <p className="text-slate-600 leading-relaxed text-[11px] pt-1">
-                        {hw.description}
-                      </p>
-
-                      <div className="text-[10px] text-slate-400 font-tabular pt-1 border-t border-slate-200 flex items-center justify-between">
-                        <span>Assigned: {hw.assignedDate}</span>
-                        {hw.attachmentUrl && (
-                          <a
-                            href={hw.attachmentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 hover:underline font-semibold"
-                          >
-                            Download Worksheet 📎
-                          </a>
-                        )}
+                    ) : (
+                      <div className="text-xs text-slate-400 py-3 text-center italic bg-slate-50 rounded border">
+                        No active leave requests on file for {currentStudent.firstName}.
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-xs text-slate-400 py-4 text-center italic bg-slate-50 rounded border">
-                  No pending homework tasks posted for {currentStudent.className} - {currentStudent.sectionName} today.
+                    )}
+                  </div>
                 </div>
               )}
-            </div>
-
-            {/* Apply Student Leave Card */}
-            <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <CalendarPlus className="h-4 w-4 text-amber-600" />
-                  <h2 className="text-sm font-bold text-slate-900">
-                    Apply Student Leave
-                  </h2>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setShowLeaveForm(!showLeaveForm)}
-                  className="text-xs h-7 gap-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold"
-                >
-                  <CalendarPlus className="h-3.5 w-3.5" />
-                  <span>{showLeaveForm ? "Close Form" : "+ Apply for Leave"}</span>
-                </Button>
-              </div>
-
-              {leaveFeedback && (
-                <ActionBanner
-                  type={leaveFeedback.type}
-                  message={leaveFeedback.message}
-                  onClose={() => setLeaveFeedback(null)}
-                />
-              )}
-
-              {/* Leave Application Form */}
-              {showLeaveForm && (
-                <form
-                  onSubmit={handleApplyLeave}
-                  className="p-4 bg-amber-50/50 border border-amber-200 rounded-lg space-y-3 animate-in fade-in"
-                >
-                  <div className="text-xs font-bold text-amber-950 uppercase tracking-wider">
-                    New Leave Notice for {currentStudent.firstName}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-600 block">Leave Category</label>
-                      <select
-                        value={leaveType}
-                        onChange={(e) => setLeaveType(e.target.value as any)}
-                        className="w-full h-8 text-xs rounded border border-slate-300 bg-white px-2 mt-0.5"
-                      >
-                        <option value="MEDICAL">Medical Leave (Doctor Advised)</option>
-                        <option value="PLANNED">Planned (Family Function / Travel)</option>
-                        <option value="CASUAL">Casual / Personal</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-600 block">From Date</label>
-                      <Input
-                        type="date"
-                        value={leaveStartDate}
-                        onChange={(e) => setLeaveStartDate(e.target.value)}
-                        className="text-xs h-8 bg-white mt-0.5"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-600 block">To Date</label>
-                      <Input
-                        type="date"
-                        value={leaveEndDate}
-                        onChange={(e) => setLeaveEndDate(e.target.value)}
-                        className="text-xs h-8 bg-white mt-0.5"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-600 block">Detailed Reason</label>
-                    <Input
-                      value={leaveReason}
-                      onChange={(e) => setLeaveReason(e.target.value)}
-                      placeholder="e.g. High fever with doctor rest advised..."
-                      className="text-xs h-8 bg-white mt-0.5"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-1 border-t border-amber-200">
-                    <Button
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowLeaveForm(false)}
-                      className="text-xs h-7"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      type="submit"
-                      disabled={isApplyingLeave}
-                      className="text-xs h-7 bg-amber-700 hover:bg-amber-800 text-white font-semibold"
-                    >
-                      {isApplyingLeave ? "Submitting..." : "Notify Class Teacher"}
-                    </Button>
-                  </div>
-                </form>
-              )}
-
-              {/* History of Applied Leaves */}
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Submitted Leave Requests
-                </h3>
-
-                {appliedLeaves.length > 0 ? (
-                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg">
-                    {appliedLeaves.map((l) => (
-                      <div key={l.id} className="p-3 flex items-center justify-between text-xs hover:bg-slate-50">
-                        <div className="space-y-0.5">
-                          <div className="font-semibold text-slate-900">
-                            {l.leaveType} Leave: {l.reason}
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-tabular">
-                            Duration: {l.startDate} to {l.endDate}
-                          </div>
-                        </div>
-                        <Badge
-                          variant={l.status === "APPROVED" ? "success" : l.status === "REJECTED" ? "danger" : "warning"}
-                          className="text-[10px]"
-                        >
-                          {l.status === "PENDING" ? "Teacher Review Pending" : l.status}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-400 py-3 text-center italic bg-slate-50 rounded border">
-                    No active leave requests on file for {currentStudent.firstName}.
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
