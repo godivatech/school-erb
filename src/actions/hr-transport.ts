@@ -18,7 +18,7 @@ import {
   sections,
   subjects,
 } from "@/db/schema";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, ne, gte, lte, sql } from "drizzle-orm";
 import { safeRevalidatePath } from "@/lib/safe-revalidate";
 import { assertRole, resolveVerifiedSession, type Role } from "@/lib/guards";
 
@@ -455,6 +455,24 @@ export async function assignStudentTransport(input: AssignStudentTransportInput)
     }
 
     let maxMonthlyFee = 0;
+
+
+    let finalPopup = 12;
+    let arr2 = () => {
+      finalPopup.toFixed(12)
+    }
+
+    /* 
+
+    let initialPop = 11;
+
+    let arr = ()=>{
+      initialPop.toFixed(0)
+    } 
+      
+    
+*/
+
 
     if (input.pickupStopId) {
       const [pickup] = await tx
@@ -950,5 +968,196 @@ export async function unassignStudentTransport(input: UnassignStudentTransportIn
     await tx.delete(studentTransport).where(eq(studentTransport.id, input.assignmentId));
     safeRevalidatePath("/transport");
     return { success: true };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Staff Member Update & Salary Appraisal Action
+// ---------------------------------------------------------------------------
+
+export interface UpdateStaffMemberInput {
+  schoolId?: string;
+  userId?: string;
+  userRole?: Role;
+  staffId: string; // staffProfiles.id
+  name: string;
+  email: string;
+  phone: string;
+  role: Role;
+  employeeCode: string;
+  designation: string;
+  basicSalary: number;
+  hra: number;
+  bankAccountNumber?: string;
+  bankIfsc?: string;
+  isActive?: boolean;
+  appraisalReason?: string;
+}
+
+export async function updateStaffMember(input: UpdateStaffMemberInput) {
+  const session = await resolveVerifiedSession(input);
+  assertRole(session.userRole, ["SUPER_ADMIN", "PRINCIPAL"]);
+
+  if (!input.staffId) {
+    throw new Error("Staff ID is required.");
+  }
+  if (!input.name?.trim() || !input.email?.trim() || !input.phone?.trim()) {
+    throw new Error("Staff name, email, and phone are required.");
+  }
+  if (!input.employeeCode?.trim() || !input.designation?.trim()) {
+    throw new Error("Employee code and designation are required.");
+  }
+  if (isNaN(input.basicSalary) || input.basicSalary < 0) {
+    throw new Error("Basic salary must be a valid positive amount.");
+  }
+  if (isNaN(input.hra) || input.hra < 0) {
+    throw new Error("HRA must be a valid positive amount.");
+  }
+
+  const cleanEmail = input.email.trim().toLowerCase();
+  const cleanEmpCode = input.employeeCode.trim().toUpperCase();
+
+  return await db.transaction(async (tx) => {
+    // 1. Fetch current profile
+    const [existingProfile] = await tx
+      .select({
+        id: staffProfiles.id,
+        userId: staffProfiles.userId,
+        employeeCode: staffProfiles.employeeCode,
+        basicSalary: staffProfiles.basicSalary,
+        hra: staffProfiles.hra,
+        designation: staffProfiles.designation,
+      })
+      .from(staffProfiles)
+      .where(
+        and(
+          eq(staffProfiles.id, input.staffId),
+          eq(staffProfiles.schoolId, session.schoolId)
+        )
+      )
+      .limit(1);
+
+    if (!existingProfile) {
+      throw new Error("Staff profile not found.");
+    }
+
+    // 2. Check employee code uniqueness (excluding current profile)
+    const [duplicateCode] = await tx
+      .select({ id: staffProfiles.id })
+      .from(staffProfiles)
+      .where(
+        and(
+          eq(staffProfiles.schoolId, session.schoolId),
+          eq(staffProfiles.employeeCode, cleanEmpCode),
+          ne(staffProfiles.id, input.staffId)
+        )
+      )
+      .limit(1);
+
+    if (duplicateCode) {
+      throw new Error(`Employee Code '${cleanEmpCode}' is already assigned to another staff member.`);
+    }
+
+    // 3. Check email uniqueness (excluding current user)
+    const [duplicateEmail] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(
+        and(
+          eq(users.schoolId, session.schoolId),
+          eq(users.email, cleanEmail),
+          ne(users.id, existingProfile.userId)
+        )
+      )
+      .limit(1);
+
+    if (duplicateEmail) {
+      throw new Error(`Email '${cleanEmail}' is already used by another user in this school.`);
+    }
+
+    // 4. Update User record
+    const [updatedUser] = await tx
+      .update(users)
+      .set({
+        name: input.name.trim(),
+        email: cleanEmail,
+        phone: input.phone.trim(),
+        role: input.role || "TEACHER",
+        isActive: input.isActive ?? true,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(users.id, existingProfile.userId),
+          eq(users.schoolId, session.schoolId)
+        )
+      )
+      .returning();
+
+    // 5. Update Staff Profile
+    const [updatedProfile] = await tx
+      .update(staffProfiles)
+      .set({
+        employeeCode: cleanEmpCode,
+        designation: input.designation.trim(),
+        basicSalary: String(input.basicSalary),
+        hra: String(input.hra),
+        bankAccountNumber: input.bankAccountNumber?.trim() || null,
+        bankIfsc: input.bankIfsc?.trim() || null,
+      })
+      .where(
+        and(
+          eq(staffProfiles.id, input.staffId),
+          eq(staffProfiles.schoolId, session.schoolId)
+        )
+      )
+      .returning();
+
+    // 6. Audit Trail with Salary Increment detection
+    const oldTotal = parseFloat(existingProfile.basicSalary) + parseFloat(existingProfile.hra || "0");
+    const newTotal = input.basicSalary + input.hra;
+    const diff = newTotal - oldTotal;
+
+    let auditReason = input.appraisalReason?.trim();
+    if (!auditReason) {
+      if (diff > 0) {
+        auditReason = `Salary Appraisal (+₹${diff.toLocaleString()}): Basic ₹${input.basicSalary.toLocaleString()}, HRA ₹${input.hra.toLocaleString()}`;
+      } else if (diff < 0) {
+        auditReason = `Salary Adjustment (-₹${Math.abs(diff).toLocaleString()}): Basic ₹${input.basicSalary.toLocaleString()}, HRA ₹${input.hra.toLocaleString()}`;
+      } else {
+        auditReason = `Updated staff profile for ${updatedUser.name} (${cleanEmpCode})`;
+      }
+    }
+
+    await tx.insert(auditLogs).values({
+      schoolId: session.schoolId,
+      userId: session.userId,
+      entityType: "STAFF",
+      entityId: updatedProfile.id,
+      action: "UPDATE",
+      newValueJson: {
+        name: updatedUser.name,
+        employeeCode: cleanEmpCode,
+        designation: updatedProfile.designation,
+        basicSalary: updatedProfile.basicSalary,
+        hra: updatedProfile.hra,
+        oldTotal,
+        newTotal,
+        diff,
+        isActive: updatedUser.isActive,
+      },
+      reason: auditReason,
+    });
+
+    safeRevalidatePath("/payroll");
+    safeRevalidatePath("/academics");
+    safeRevalidatePath("/timetable");
+
+    return {
+      success: true,
+      user: updatedUser,
+      profile: updatedProfile,
+      salaryDiff: diff,
+    };
   });
 }

@@ -24,6 +24,9 @@ import {
   X,
   Printer,
   Download,
+  Pencil,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +44,7 @@ import {
   runMonthlyPayroll,
   approveStaffLeaveAndCreateSubstitutions,
   createStaffMember,
+  updateStaffMember,
   submitStaffLeave,
 } from "@/actions/hr-transport";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -63,6 +67,7 @@ export interface StaffDirectoryItem {
   sickLeaveBalance: number;
   bankAccountNumber?: string | null;
   bankIfsc?: string | null;
+  isActive?: boolean;
 }
 
 export interface PayrollStaffItem {
@@ -121,8 +126,15 @@ export function PayrollClient({
   const [activeTab, setActiveTab] = React.useState<"directory" | "payroll" | "leaves">("directory");
   const [searchQuery, setSearchQuery] = React.useState("");
 
+  const [staffRows, setStaffRows] = React.useState<StaffDirectoryItem[]>(staffDirectory);
+  React.useEffect(() => {
+    setStaffRows(staffDirectory);
+  }, [staffDirectory]);
+
   // Modals
   const [isAddStaffOpen, setIsAddStaffOpen] = React.useState(false);
+  const [isEditStaffOpen, setIsEditStaffOpen] = React.useState(false);
+  const [isSavingStaff, setIsSavingStaff] = React.useState(false);
   const [isApplyLeaveOpen, setIsApplyLeaveOpen] = React.useState(false);
   const [selectedStaffForLeave, setSelectedStaffForLeave] = React.useState<string>("");
 
@@ -139,6 +151,119 @@ export function PayrollClient({
     casualLeaveBalance: 12,
     sickLeaveBalance: 10,
   });
+
+  const [editStaffForm, setEditStaffForm] = React.useState({
+    staffId: "",
+    name: "",
+    email: "",
+    phone: "",
+    role: "TEACHER" as "SUPER_ADMIN" | "PRINCIPAL" | "ACCOUNTANT" | "TEACHER" | "PARENT",
+    employeeCode: "",
+    designation: "",
+    basicSalary: 30000,
+    hra: 6000,
+    bankAccountNumber: "",
+    bankIfsc: "",
+    isActive: true,
+    appraisalReason: "",
+    originalBasic: 30000,
+    originalHra: 6000,
+  });
+
+  const handleOpenEditStaff = (staff: StaffDirectoryItem) => {
+    setEditStaffForm({
+      staffId: staff.id,
+      name: staff.name,
+      email: staff.email || "",
+      phone: staff.phone || "",
+      role: (staff.role as any) || "TEACHER",
+      employeeCode: staff.employeeCode,
+      designation: staff.designation,
+      basicSalary: staff.basicSalary,
+      hra: staff.hra,
+      bankAccountNumber: staff.bankAccountNumber || "",
+      bankIfsc: staff.bankIfsc || "",
+      isActive: staff.isActive ?? true,
+      appraisalReason: "",
+      originalBasic: staff.basicSalary,
+      originalHra: staff.hra,
+    });
+    setIsEditStaffOpen(true);
+  };
+
+  const handleSaveStaffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editStaffForm.name || !editStaffForm.email || !editStaffForm.phone || !editStaffForm.employeeCode || !editStaffForm.designation) {
+      notify("error", "Name, email, phone, employee code, and designation are required.");
+      return;
+    }
+    if (isNaN(editStaffForm.basicSalary) || editStaffForm.basicSalary < 0) {
+      notify("error", "Basic salary must be a valid positive amount.");
+      return;
+    }
+    if (isNaN(editStaffForm.hra) || editStaffForm.hra < 0) {
+      notify("error", "HRA must be a valid positive amount.");
+      return;
+    }
+
+    setIsSavingStaff(true);
+    try {
+      const res = await updateStaffMember({
+        staffId: editStaffForm.staffId,
+        name: editStaffForm.name.trim(),
+        email: editStaffForm.email.trim(),
+        phone: editStaffForm.phone.trim(),
+        role: editStaffForm.role,
+        employeeCode: editStaffForm.employeeCode.trim(),
+        designation: editStaffForm.designation.trim(),
+        basicSalary: editStaffForm.basicSalary,
+        hra: editStaffForm.hra,
+        bankAccountNumber: editStaffForm.bankAccountNumber.trim() || undefined,
+        bankIfsc: editStaffForm.bankIfsc.trim() || undefined,
+        isActive: editStaffForm.isActive,
+        appraisalReason: editStaffForm.appraisalReason.trim() || undefined,
+      });
+
+      if (res.success) {
+        // Update local state for instant reactivity
+        setStaffRows((prev) =>
+          prev.map((s) =>
+            s.id === editStaffForm.staffId
+              ? {
+                  ...s,
+                  name: editStaffForm.name.trim(),
+                  email: editStaffForm.email.trim(),
+                  phone: editStaffForm.phone.trim(),
+                  role: editStaffForm.role,
+                  employeeCode: editStaffForm.employeeCode.trim().toUpperCase(),
+                  designation: editStaffForm.designation.trim(),
+                  basicSalary: editStaffForm.basicSalary,
+                  hra: editStaffForm.hra,
+                  bankAccountNumber: editStaffForm.bankAccountNumber.trim() || null,
+                  bankIfsc: editStaffForm.bankIfsc.trim() || null,
+                  isActive: editStaffForm.isActive,
+                }
+              : s
+          )
+        );
+
+        setIsEditStaffOpen(false);
+        const diff = res.salaryDiff;
+        let msg = `Staff member ${editStaffForm.name} updated successfully!`;
+        if (diff > 0) {
+          msg += ` Salary increment (+₹${diff.toLocaleString()}/month) applied.`;
+        } else if (diff < 0) {
+          msg += ` Salary adjusted (-₹${Math.abs(diff).toLocaleString()}/month).`;
+        }
+        notify("success", msg);
+        router.refresh();
+      }
+    } catch (err: any) {
+      notify("error", err.message || "Failed to update staff member.");
+    } finally {
+      setIsSavingStaff(false);
+    }
+  };
 
   const [applyLeaveForm, setApplyLeaveForm] = React.useState({
     staffId: "",
@@ -228,9 +353,9 @@ export function PayrollClient({
   const pendingLeaves = leaves.filter((l) => l.status === "PENDING");
 
   const filteredStaff = React.useMemo(() => {
-    if (!searchQuery.trim()) return staffDirectory;
+    if (!searchQuery.trim()) return staffRows;
     const q = searchQuery.toLowerCase();
-    return staffDirectory.filter(
+    return staffRows.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.employeeCode.toLowerCase().includes(q) ||
@@ -238,7 +363,7 @@ export function PayrollClient({
         s.role.toLowerCase().includes(q) ||
         (s.email && s.email.toLowerCase().includes(q))
     );
-  }, [staffDirectory, searchQuery]);
+  }, [staffRows, searchQuery]);
 
   // Client-side pagination hooks
   const { paginatedItems: paginatedStaff, paginationProps: staffPagination } = usePagination(filteredStaff, 8);
@@ -577,7 +702,14 @@ export function PayrollClient({
                         {staff.employeeCode}
                       </TableCell>
                       <TableCell>
-                        <div className="font-semibold text-slate-900 text-xs">{staff.name}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-slate-900 text-xs">{staff.name}</span>
+                          {staff.isActive === false && (
+                            <Badge variant="danger" className="text-[9px] px-1 py-0">
+                              Inactive
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-[10px] text-slate-400 font-mono">ID: {staff.id.slice(0, 8)}...</div>
                       </TableCell>
                       <TableCell>
@@ -612,17 +744,29 @@ export function PayrollClient({
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedStaffForLeave(staff.id);
-                            setIsApplyLeaveOpen(true);
-                          }}
-                          className="h-7 text-xs border-slate-200 hover:bg-slate-50"
-                        >
-                          Apply Leave
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenEditStaff(staff)}
+                            disabled={isLocked}
+                            className="h-7 text-xs border-slate-300 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 font-semibold gap-1 px-2"
+                          >
+                            <Pencil className="h-3 w-3 text-blue-600" />
+                            <span>Edit / Appraise</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedStaffForLeave(staff.id);
+                              setIsApplyLeaveOpen(true);
+                            }}
+                            className="h-7 text-xs border-slate-200 hover:bg-slate-50 text-slate-600 px-2"
+                          >
+                            Apply Leave
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -1029,6 +1173,261 @@ export function PayrollClient({
           </div>
         </div>
       )}
+
+      {/* MODAL: Edit Staff & Salary Appraisal */}
+      {isEditStaffOpen && (() => {
+        const oldTotal = editStaffForm.originalBasic + editStaffForm.originalHra;
+        const newTotal = (Number(editStaffForm.basicSalary) || 0) + (Number(editStaffForm.hra) || 0);
+        const diff = newTotal - oldTotal;
+        const pct = oldTotal > 0 ? ((diff / oldTotal) * 100).toFixed(1) : "0.0";
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-xl p-5 space-y-4 my-auto animate-in fade-in zoom-in-95 max-h-[95vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="h-7 w-7 rounded-md bg-blue-100 text-blue-900 flex items-center justify-center">
+                    <Pencil className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Edit Staff & Compensation Appraisal
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Update profile, revise salary package, or adjust employment status.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditStaffOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveStaffSubmit} className="space-y-4">
+                {/* 1. Core Profile Details */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    1. Basic Profile & Role
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">Full Name *</label>
+                      <Input
+                        required
+                        value={editStaffForm.name}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, name: e.target.value })}
+                        className="h-8 text-xs bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">Employee Code *</label>
+                      <Input
+                        required
+                        value={editStaffForm.employeeCode}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, employeeCode: e.target.value })}
+                        className="h-8 text-xs font-mono uppercase bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">Email Address *</label>
+                      <Input
+                        type="email"
+                        required
+                        value={editStaffForm.email}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, email: e.target.value })}
+                        className="h-8 text-xs bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">Phone Number *</label>
+                      <Input
+                        type="tel"
+                        required
+                        value={editStaffForm.phone}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, phone: e.target.value })}
+                        className="h-8 text-xs bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">Designation / Title *</label>
+                      <Input
+                        required
+                        placeholder="e.g. Senior PGT Mathematics"
+                        value={editStaffForm.designation}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, designation: e.target.value })}
+                        className="h-8 text-xs bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">System Role</label>
+                      <select
+                        value={editStaffForm.role}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, role: e.target.value as any })}
+                        className="w-full h-8 text-xs border border-slate-300 rounded px-2 bg-white"
+                      >
+                        <option value="TEACHER">TEACHER</option>
+                        <option value="ACCOUNTANT">ACCOUNTANT</option>
+                        <option value="PRINCIPAL">PRINCIPAL</option>
+                        <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-700">Employment Status</label>
+                    <select
+                      value={editStaffForm.isActive ? "ACTIVE" : "INACTIVE"}
+                      onChange={(e) => setEditStaffForm({ ...editStaffForm, isActive: e.target.value === "ACTIVE" })}
+                      className="w-full h-8 text-xs border border-slate-300 rounded px-2 bg-white font-medium"
+                    >
+                      <option value="ACTIVE">✅ ACTIVE (Currently Employed & on Roster)</option>
+                      <option value="INACTIVE">⛔ INACTIVE / RELIEVED (Resigned or on extended leave)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 2. Compensation & Salary Appraisal Calculator */}
+                <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <DollarSign className="h-4 w-4 text-blue-700" />
+                      <span className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                        2. Salary Structure & Appraisal
+                      </span>
+                    </div>
+
+                    {/* Live Diff Badge */}
+                    {diff > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
+                        <TrendingUp className="h-3 w-3 text-emerald-700" />
+                        <span>+₹{diff.toLocaleString()} (+{pct}% Hike)</span>
+                      </span>
+                    ) : diff < 0 ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-800 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full">
+                        <TrendingDown className="h-3 w-3 text-rose-700" />
+                        <span>-₹{Math.abs(diff).toLocaleString()} Adjustment</span>
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded">
+                        No Change
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">Basic Salary (₹) *</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="500"
+                        required
+                        value={editStaffForm.basicSalary}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, basicSalary: Number(e.target.value) })}
+                        className="h-8 text-xs font-mono font-bold bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">HRA Allowance (₹) *</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="500"
+                        required
+                        value={editStaffForm.hra}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, hra: Number(e.target.value) })}
+                        className="h-8 text-xs font-mono font-bold bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded border border-blue-100 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[10px] block">Previous Package:</span>
+                      <span className="font-mono text-slate-600 font-semibold">₹{oldTotal.toLocaleString()}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-slate-400 text-[10px] block">New Monthly Gross:</span>
+                      <span className="font-mono text-blue-900 font-bold text-sm">₹{newTotal.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-700">
+                      Appraisal / Increment Reason (for Audit Log)
+                    </label>
+                    <Input
+                      placeholder="e.g. Annual Appraisal 2026-27 approved by Correspondent"
+                      value={editStaffForm.appraisalReason}
+                      onChange={(e) => setEditStaffForm({ ...editStaffForm, appraisalReason: e.target.value })}
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Banking Details */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    3. Banking Details (for Direct Deposit)
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">Bank Account Number</label>
+                      <Input
+                        placeholder="e.g. 50100234567890"
+                        value={editStaffForm.bankAccountNumber}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, bankAccountNumber: e.target.value })}
+                        className="h-8 text-xs font-mono bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700">Bank IFSC Code</label>
+                      <Input
+                        placeholder="e.g. HDFC0001024"
+                        value={editStaffForm.bankIfsc}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, bankIfsc: e.target.value })}
+                        className="h-8 text-xs font-mono uppercase bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditStaffOpen(false)}
+                    className="h-8 text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isSavingStaff}
+                    className="h-8 text-xs bg-navy-900 hover:bg-navy-800 text-white font-semibold gap-1.5 px-4"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>{isSavingStaff ? "Saving..." : "Save & Update Profile"}</span>
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* MODAL: + Apply for Leave */}
       {isApplyLeaveOpen && (

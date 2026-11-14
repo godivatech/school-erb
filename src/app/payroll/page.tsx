@@ -62,6 +62,7 @@ export default async function PayrollPage() {
       phone: users.phone,
       role: users.role,
       userId: users.id,
+      isActive: users.isActive,
     })
     .from(staffProfiles)
     .innerJoin(users, eq(staffProfiles.userId, users.id))
@@ -109,6 +110,7 @@ export default async function PayrollPage() {
     sickLeaveBalance: parseFloat(s.sickLeaveBalance || "10"),
     bankAccountNumber: s.bankAccountNumber,
     bankIfsc: s.bankIfsc,
+    isActive: s.isActive ?? true,
   }));
 
   const staffList: PayrollStaffItem[] = staff.map((s) => {
