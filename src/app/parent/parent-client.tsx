@@ -365,7 +365,7 @@ export function ParentPortalClient({
                     Fee Statement & 1-Click Payment
                   </h2>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <Link
                     href={`/students/${currentStudent.id}/ledger`}
                     className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 hover:underline"

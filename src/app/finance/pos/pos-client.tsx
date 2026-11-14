@@ -394,17 +394,17 @@ export function CashierPosClient({
       {/* SCREEN VIEW ONLY: The interactive POS workspace is hidden during print */}
       <div className="space-y-4 print:hidden">
         {/* Top Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-200 pb-3">
         <div className="flex items-center gap-3">
           <Link href="/finance">
-            <Button size="icon" variant="outline" className="h-8 w-8">
+            <Button size="icon" variant="outline" className="h-8 w-8 shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-navy-800" />
-              Supermarket-Speed Cashier POS
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-navy-800 shrink-0" />
+              <span>Supermarket-Speed Cashier POS</span>
             </h1>
             <p className="text-xs text-slate-500 font-tabular">
               Press <kbd className="px-1 py-0.2 bg-slate-100 border border-slate-300 rounded font-mono text-[10px]">/</kbd> anywhere to search • Priority-based auto-allocation
@@ -414,7 +414,7 @@ export function CashierPosClient({
 
         <Badge
           variant={isLocked ? "warning" : "success"}
-          className="text-xs"
+          className="text-xs self-start sm:self-auto shrink-0"
         >
           {yearName} ({isLocked ? "LOCKED" : "ACTIVE"})
         </Badge>
@@ -699,7 +699,7 @@ export function CashierPosClient({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {student && (
                 <Link href={`/students/${student.id}/ledger`}>
                   <Button
@@ -730,11 +730,11 @@ export function CashierPosClient({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 print:hidden">
           <div className="bg-white rounded-lg shadow-2xl border border-slate-300 w-full max-w-xl max-h-[92vh] overflow-y-auto p-5 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Printer className="h-4 w-4 text-navy-900" />
                 <h3 className="text-sm font-bold text-slate-900">Official Fee Receipt Slip</h3>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
                   onClick={() => window.print()}

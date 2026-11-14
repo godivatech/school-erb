@@ -282,8 +282,8 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link href="/finance/pos">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/finance/pos" className="shrink-0">
             <Button size="sm" variant="default" className="gap-1.5 font-semibold bg-navy-900 text-white">
               <CreditCard className="h-3.5 w-3.5" />
               <span>Cashier POS</span>
@@ -292,13 +292,13 @@ export default async function DashboardPage() {
               </kbd>
             </Button>
           </Link>
-          <Link href="/attendance">
+          <Link href="/attendance" className="shrink-0">
             <Button size="sm" variant="outline" className="gap-1.5 text-xs">
               <CalendarCheck className="h-3.5 w-3.5 text-slate-600" />
               <span>Mark Attendance</span>
             </Button>
           </Link>
-          <Link href="/students/new">
+          <Link href="/students/new" className="shrink-0">
             <Button size="sm" variant="secondary" className="gap-1.5 text-xs">
               <UserPlus className="h-3.5 w-3.5 text-slate-600" />
               <span>New Admission</span>

@@ -340,7 +340,7 @@ export function FinanceClient({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link href="/finance/pos">
             <Button size="sm" variant="default" className="gap-1.5 font-semibold bg-navy-900 text-white">
               <CreditCard className="h-3.5 w-3.5" />
@@ -593,7 +593,7 @@ export function FinanceClient({
       {activeTab === "defaulters" && (
         <div className="space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="relative w-64">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <Input
@@ -708,7 +708,7 @@ export function FinanceClient({
                 Configure quarterly/annual fee heads (Tuition, Transport, Lab, Exam) and assign pricing amounts per grade level.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 size="sm"
                 variant="outline"
@@ -794,11 +794,11 @@ export function FinanceClient({
           <div className="bg-white rounded-lg shadow-2xl border border-slate-300 w-full max-w-lg p-6 space-y-4 animate-in fade-in zoom-in-95 print:p-0 print:border-none print:shadow-none">
             {/* Non-print toolbar */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-3 print:hidden">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Printer className="h-4 w-4 text-navy-900" />
                 <h3 className="text-sm font-bold text-slate-900">Official Fee Receipt Slip</h3>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
                   onClick={() => window.print()}
@@ -903,7 +903,7 @@ export function FinanceClient({
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-md p-5 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Plus className="h-4 w-4 text-navy-900" />
                 <h3 className="text-sm font-bold text-slate-900">Add New Fee Head</h3>
               </div>
@@ -997,7 +997,7 @@ export function FinanceClient({
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-md p-5 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Plus className="h-4 w-4 text-navy-900" />
                 <h3 className="text-sm font-bold text-slate-900">Configure Grade Fee Amount</h3>
               </div>

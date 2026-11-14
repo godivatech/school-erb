@@ -231,17 +231,17 @@ export function StudentLedgerClient({ initialData }: { initialData: StudentLedge
       {/* SCREEN VIEW ONLY */}
       <div className="space-y-5 print:hidden">
         {/* Navigation Breadcrumb */}
-        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
           <div className="flex items-center gap-3">
             <Link href="/students">
-              <Button size="icon" variant="outline" className="h-8 w-8">
+              <Button size="icon" variant="outline" className="h-8 w-8 shrink-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-navy-800" />
-                Student Financial Ledger & Transaction History
+                <Receipt className="h-5 w-5 text-navy-800 shrink-0" />
+                <span>Student Financial Ledger & Transaction History</span>
               </h1>
               <p className="text-xs text-slate-500">
                 Official transaction statement, term invoice audit, and on-demand receipt re-printing.
@@ -249,7 +249,7 @@ export function StudentLedgerClient({ initialData }: { initialData: StudentLedge
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {financialSummary.pendingDues > 0 && (
               <Link href={`/finance/pos?query=${encodeURIComponent(student.admissionNo)}`}>
                 <Button size="sm" className="bg-navy-900 text-white font-semibold text-xs gap-1.5 h-8">

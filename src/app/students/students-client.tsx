@@ -544,14 +544,14 @@ export function StudentsClient({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link href="/students/import">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/students/import" className="shrink-0">
             <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8">
               <Upload className="h-3.5 w-3.5 text-slate-600" />
               <span>Bulk CSV Wizard</span>
             </Button>
           </Link>
-          <Link href="/students/new">
+          <Link href="/students/new" className="shrink-0">
             <Button size="sm" className="gap-1.5 text-xs h-8 bg-slate-900 hover:bg-slate-800 text-white font-semibold">
               <Plus className="h-3.5 w-3.5" />
               <span>New Admission</span>

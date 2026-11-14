@@ -444,7 +444,7 @@ export function AttendanceClient({
       </div>
 
       {/* Primary Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 flex-wrap">
         <button
           onClick={() => setActiveTab("register")}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-bold transition-colors ${

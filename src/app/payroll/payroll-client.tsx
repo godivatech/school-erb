@@ -402,7 +402,7 @@ export function PayrollClient({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             size="sm"
             onClick={() => setIsAddStaffOpen(true)}
@@ -639,13 +639,13 @@ export function PayrollClient({
         <div className="space-y-3">
           {/* Payroll Toolbar Actions */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-800">
                 Payroll Cycle: {monthYear} • {payrollRows.length} Salaried Staff Disbursed
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 size="sm"
                 variant="outline"
@@ -868,7 +868,7 @@ export function PayrollClient({
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-lg p-5 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <UserPlus className="h-4 w-4 text-navy-800" />
                 <h3 className="text-sm font-bold text-slate-900">Add New Staff Member</h3>
               </div>
@@ -1035,7 +1035,7 @@ export function PayrollClient({
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-md p-5 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <CalendarPlus className="h-4 w-4 text-navy-800" />
                 <h3 className="text-sm font-bold text-slate-900">Apply for Staff Leave</h3>
               </div>
@@ -1154,13 +1154,13 @@ export function PayrollClient({
           <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh]">
             {/* Top Toolbar */}
             <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Printer className="h-4 w-4 text-emerald-400" />
                 <span className="font-bold text-xs">
                   Official Salary Payslip — {selectedPayslipStaff.name} ({monthYear})
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
                   onClick={() => window.print()}
@@ -1362,13 +1362,13 @@ export function PayrollClient({
           <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh]">
             {/* Top Toolbar */}
             <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <FileText className="h-4 w-4 text-purple-400" />
                 <span className="font-bold text-xs">
                   Annual Salary Statement & Form 16 Summary (F.Y. 2026-2027) — {selectedForm16Staff.name}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
                   onClick={() => window.print()}

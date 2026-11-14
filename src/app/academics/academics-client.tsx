@@ -1164,7 +1164,7 @@ export function AcademicsClient({
       {showPromoteModal && (
         <form onSubmit={handleExecutePromotion} className="p-5 bg-white border-2 border-indigo-200 rounded-xl space-y-4 shadow-lg animate-in fade-in">
           <div className="flex items-center justify-between border-b border-indigo-100 pb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="p-2 bg-indigo-50 rounded-lg text-indigo-700">
                 <GraduationCap className="h-5 w-5" />
               </div>
@@ -1289,7 +1289,7 @@ export function AcademicsClient({
                 </Badge>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
                   type="button"
@@ -1374,7 +1374,7 @@ export function AcademicsClient({
                 Seats
               </strong>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 size="sm"
                 variant="outline"
@@ -2179,7 +2179,7 @@ export function AcademicsClient({
             <div className="text-xs text-slate-600">
               Declare planned calendar holidays (with date ranges) or official emergency storm/closure mandates.
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 size="sm"
                 variant="outline"
