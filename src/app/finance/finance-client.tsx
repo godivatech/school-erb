@@ -409,33 +409,33 @@ export function FinanceClient({
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 gap-2">
+      <div className="flex border-b border-slate-200 gap-1 sm:gap-2 overflow-x-auto no-scrollbar pb-px">
         <button
           type="button"
           onClick={() => setActiveTab("receipts")}
-          className={`py-2 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-2 px-3 sm:px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === "receipts"
               ? "border-navy-900 text-navy-900"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
-          <FileText className="h-4 w-4" />
+          <FileText className="h-4 w-4 shrink-0" />
           <span>Receipts Ledger ({receipts.length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("defaulters")}
-          className={`py-2 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-2 px-3 sm:px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === "defaulters"
               ? "border-navy-900 text-navy-900"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
           <span>Fee Defaulters & Overdue Dues</span>
           {defaulters.length > 0 && (
-            <Badge variant="danger" className="h-4 px-1.5 text-[9px]">
+            <Badge variant="danger" className="h-4 px-1.5 text-[9px] shrink-0">
               {defaulters.length}
             </Badge>
           )}
@@ -444,13 +444,13 @@ export function FinanceClient({
         <button
           type="button"
           onClick={() => setActiveTab("structures")}
-          className={`py-2 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-2 px-3 sm:px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === "structures"
               ? "border-navy-900 text-navy-900"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
-          <Layers className="h-4 w-4" />
+          <Layers className="h-4 w-4 shrink-0" />
           <span>Fee Heads & Grade Structures</span>
         </button>
       </div>
@@ -468,7 +468,7 @@ export function FinanceClient({
                 className="pl-8 h-8 text-xs"
               />
             </div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-500 shrink-0">
               Showing {filteredReceipts.length} of {receipts.length} receipts
             </div>
           </div>

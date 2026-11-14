@@ -335,27 +335,27 @@ export function StudentLedgerClient({ initialData }: { initialData: StudentLedge
         </div>
 
         {/* Tab Selection */}
-        <div className="border-b border-slate-200 flex gap-4">
+        <div className="border-b border-slate-200 flex gap-4 overflow-x-auto no-scrollbar pb-px">
           <button
             onClick={() => setActiveTab("receipts")}
-            className={`pb-2.5 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`pb-2.5 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === "receipts"
                 ? "border-navy-900 text-navy-900"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Receipt className="h-3.5 w-3.5" />
+            <Receipt className="h-3.5 w-3.5 shrink-0" />
             <span>Payment Receipts & Slips ({receipts.length})</span>
           </button>
           <button
             onClick={() => setActiveTab("invoices")}
-            className={`pb-2.5 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`pb-2.5 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === "invoices"
                 ? "border-navy-900 text-navy-900"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <FileText className="h-3.5 w-3.5" />
+            <FileText className="h-3.5 w-3.5 shrink-0" />
             <span>Invoices & Fee Particulars ({invoices.length})</span>
           </button>
         </div>

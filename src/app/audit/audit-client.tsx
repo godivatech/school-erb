@@ -172,7 +172,7 @@ export function AuditClient({ logs }: AuditClientProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-xs font-mono font-semibold">
             {filteredLogs.length} / {logs.length} Entries
           </Badge>
@@ -420,7 +420,7 @@ export function AuditClient({ logs }: AuditClientProps) {
             {/* Modal Header */}
             <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="neutral" className="font-mono text-xs font-bold uppercase">
                     {selectedLog.action}
                   </Badge>
@@ -538,13 +538,13 @@ export function AuditClient({ logs }: AuditClientProps) {
           <div className="bg-white rounded-lg shadow-2xl max-w-5xl w-full mx-auto my-auto flex flex-col overflow-hidden max-h-[95vh]">
             {/* Top Toolbar */}
             <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white shrink-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Printer className="h-4 w-4 text-emerald-400" />
                 <span className="font-bold text-xs">
                   Official System Audit Log Export ({filteredLogs.length} Records)
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
                   onClick={() => window.print()}

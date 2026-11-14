@@ -444,10 +444,10 @@ export function AttendanceClient({
       </div>
 
       {/* Primary Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 flex-wrap">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab("register")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-bold transition-colors ${
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-bold transition-colors shrink-0 whitespace-nowrap ${
             activeTab === "register"
               ? "bg-navy-900 text-white shadow-sm"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -470,7 +470,7 @@ export function AttendanceClient({
 
         <button
           onClick={() => setActiveTab("grid")}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-bold transition-colors ${
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-bold transition-colors shrink-0 whitespace-nowrap ${
             activeTab === "grid"
               ? "bg-navy-900 text-white shadow-sm"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"

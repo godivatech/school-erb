@@ -1558,29 +1558,31 @@ export function AcademicsClient({
 
       {/* TABS CONTAINER */}
       <Tabs defaultValue="classes" value={currentTab} onValueChange={setCurrentTab} className="w-full">
-        <TabsList className="bg-slate-100 p-1 border border-slate-200">
-          <TabsTrigger value="classes" className="gap-1.5 text-xs">
-            <Layers className="h-3.5 w-3.5" /> Classes & Sections ({classes.length})
-          </TabsTrigger>
-          <TabsTrigger value="mapping" className="gap-1.5 text-xs">
-            <BookmarkCheck className="h-3.5 w-3.5" /> Class-Subject Mapping
-          </TabsTrigger>
-          <TabsTrigger value="subjects" className="gap-1.5 text-xs">
-            <BookOpen className="h-3.5 w-3.5" /> Master Subjects ({subjects.length})
-          </TabsTrigger>
-          <TabsTrigger value="homework" className="gap-1.5 text-xs">
-            <FileSpreadsheet className="h-3.5 w-3.5" /> Daily Homework Diary ({homeworkData.length})
-          </TabsTrigger>
-          <TabsTrigger value="holidays" className="gap-1.5 text-xs">
-            <Calendar className="h-3.5 w-3.5" /> Holidays ({holidays.length})
-          </TabsTrigger>
-          <TabsTrigger value="syllabus" className="gap-1.5 text-xs">
-            <GraduationCap className="h-3.5 w-3.5" /> Syllabus Tracker
-          </TabsTrigger>
-          <TabsTrigger value="years" className="gap-1.5 text-xs">
-            <CalendarDays className="h-3.5 w-3.5" /> Academic Years ({academicYears.length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto no-scrollbar pb-1">
+          <TabsList className="bg-slate-100 p-1 border border-slate-200 inline-flex flex-nowrap whitespace-nowrap min-w-max">
+            <TabsTrigger value="classes" className="gap-1.5 text-xs shrink-0">
+              <Layers className="h-3.5 w-3.5" /> Classes & Sections ({classes.length})
+            </TabsTrigger>
+            <TabsTrigger value="mapping" className="gap-1.5 text-xs shrink-0">
+              <BookmarkCheck className="h-3.5 w-3.5" /> Class-Subject Mapping
+            </TabsTrigger>
+            <TabsTrigger value="subjects" className="gap-1.5 text-xs shrink-0">
+              <BookOpen className="h-3.5 w-3.5" /> Master Subjects ({subjects.length})
+            </TabsTrigger>
+            <TabsTrigger value="homework" className="gap-1.5 text-xs shrink-0">
+              <FileSpreadsheet className="h-3.5 w-3.5" /> Daily Homework Diary ({homeworkData.length})
+            </TabsTrigger>
+            <TabsTrigger value="holidays" className="gap-1.5 text-xs shrink-0">
+              <Calendar className="h-3.5 w-3.5" /> Holidays ({holidays.length})
+            </TabsTrigger>
+            <TabsTrigger value="syllabus" className="gap-1.5 text-xs shrink-0">
+              <GraduationCap className="h-3.5 w-3.5" /> Syllabus Tracker
+            </TabsTrigger>
+            <TabsTrigger value="years" className="gap-1.5 text-xs shrink-0">
+              <CalendarDays className="h-3.5 w-3.5" /> Academic Years ({academicYears.length})
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ------------------------------------------------------------- */}
         {/* TAB 1: Classes & Sections */}

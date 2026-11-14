@@ -46,6 +46,16 @@
 }
 
 @layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   /* Mandatory Tabular Numeral Class for high-density financial and academic tables */
   .font-tabular {
     font-variant-numeric: tabular-nums;

@@ -486,46 +486,46 @@ export function PayrollClient({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-200 gap-2">
+      <div className="flex border-b border-slate-200 gap-1 sm:gap-2 overflow-x-auto no-scrollbar pb-px">
         <button
           type="button"
           onClick={() => setActiveTab("directory")}
-          className={`py-2 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-2 px-3 sm:px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === "directory"
               ? "border-navy-900 text-navy-900"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
-          <UsersRound className="h-4 w-4" />
+          <UsersRound className="h-4 w-4 shrink-0" />
           <span>Staff Directory ({staffDirectory.length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("payroll")}
-          className={`py-2 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-2 px-3 sm:px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === "payroll"
               ? "border-navy-900 text-navy-900"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
-          <DollarSign className="h-4 w-4" />
+          <DollarSign className="h-4 w-4 shrink-0" />
           <span>Monthly Payroll Run ({monthYear})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("leaves")}
-          className={`py-2 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-2 px-3 sm:px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === "leaves"
               ? "border-navy-900 text-navy-900"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
         >
-          <CalendarCheck className="h-4 w-4" />
+          <CalendarCheck className="h-4 w-4 shrink-0" />
           <span>Leave Register & Substitutions</span>
           {pendingLeaves.length > 0 && (
-            <Badge variant="warning" className="h-4 px-1.5 text-[9px]">
+            <Badge variant="warning" className="h-4 px-1.5 text-[9px] shrink-0">
               {pendingLeaves.length}
             </Badge>
           )}
