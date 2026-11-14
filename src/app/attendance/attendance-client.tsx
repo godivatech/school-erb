@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   UserCheck,
@@ -26,6 +27,7 @@ import {
   X,
   Building2,
   ShieldAlert,
+  UsersRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +134,7 @@ interface AttendanceClientProps {
   allSchoolLeaves?: SchoolLeaveItem[];
   userRole?: string;
   initialTab?: "grid" | "register";
+  pendingStaffLeavesCount?: number;
 }
 
 export function AttendanceClient({
@@ -148,6 +151,7 @@ export function AttendanceClient({
   allSchoolLeaves = [],
   userRole = "SUPER_ADMIN",
   initialTab = "register",
+  pendingStaffLeavesCount = 0,
 }: AttendanceClientProps) {
   const router = useRouter();
 
@@ -533,6 +537,33 @@ export function AttendanceClient({
           )}
         </button>
       </div>
+
+      {/* 360° Pending Staff Leaves Alert Banner (Principal / Super Admin) */}
+      {(userRole === "SUPER_ADMIN" || userRole === "PRINCIPAL") && pendingStaffLeavesCount > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0">
+              <UsersRound className="h-4 w-4 text-amber-800" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-amber-950 flex items-center gap-2">
+                <span>{pendingStaffLeavesCount} Staff Leave Application{pendingStaffLeavesCount > 1 ? "s" : ""} Pending Review</span>
+                <Badge variant="warning" className="text-[9px] h-4 px-1.5 font-bold">
+                  Requires Action
+                </Badge>
+              </div>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                Staff member has applied for leave. Review application and approve to auto-assign timetable substitutes.
+              </p>
+            </div>
+          </div>
+          <Link href="/payroll">
+            <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs h-7 px-3 gap-1 shrink-0">
+              <span>Review & Assign Substitutes &rarr;</span>
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Sync / Error / Late Reversal Banners */}
       {errorMessage && (

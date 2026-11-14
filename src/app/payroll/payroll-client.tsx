@@ -46,6 +46,7 @@ import {
   createStaffMember,
   updateStaffMember,
   submitStaffLeave,
+  rejectStaffLeave,
 } from "@/actions/hr-transport";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ActionBanner } from "@/components/ui/action-banner";
@@ -162,6 +163,8 @@ export function PayrollClient({
     designation: "",
     basicSalary: 30000,
     hra: 6000,
+    casualLeaveBalance: 12,
+    sickLeaveBalance: 10,
     bankAccountNumber: "",
     bankIfsc: "",
     isActive: true,
@@ -183,6 +186,8 @@ export function PayrollClient({
       designation: staff.designation,
       basicSalary: staff.basicSalary,
       hra: staff.hra,
+      casualLeaveBalance: staff.casualLeaveBalance,
+      sickLeaveBalance: staff.sickLeaveBalance,
       bankAccountNumber: staff.bankAccountNumber || "",
       bankIfsc: staff.bankIfsc || "",
       isActive: staff.isActive ?? true,
@@ -289,6 +294,8 @@ export function PayrollClient({
         designation: editStaffForm.designation.trim(),
         basicSalary: editStaffForm.basicSalary,
         hra: editStaffForm.hra,
+        casualLeaveBalance: editStaffForm.casualLeaveBalance,
+        sickLeaveBalance: editStaffForm.sickLeaveBalance,
         bankAccountNumber: editStaffForm.bankAccountNumber.trim() || undefined,
         bankIfsc: editStaffForm.bankIfsc.trim() || undefined,
         isActive: editStaffForm.isActive,
@@ -310,6 +317,8 @@ export function PayrollClient({
                   designation: editStaffForm.designation.trim(),
                   basicSalary: editStaffForm.basicSalary,
                   hra: editStaffForm.hra,
+                  casualLeaveBalance: editStaffForm.casualLeaveBalance,
+                  sickLeaveBalance: editStaffForm.sickLeaveBalance,
                   bankAccountNumber: editStaffForm.bankAccountNumber.trim() || null,
                   bankIfsc: editStaffForm.bankIfsc.trim() || null,
                   isActive: editStaffForm.isActive,
@@ -498,6 +507,33 @@ export function PayrollClient({
           }
         } catch (err: any) {
           notify("error", "Failed to approve leave: " + err.message);
+        } finally {
+          setIsProcessing(false);
+        }
+      },
+    });
+  };
+
+  const handleRejectLeave = (leaveId: string, staffName: string) => {
+    setConfirmAction({
+      isOpen: true,
+      title: `Reject Leave Application for ${staffName}`,
+      description: `Are you sure you want to reject this leave application? The staff member will see this decision on their leave portal.`,
+      confirmText: "Reject Leave",
+      variant: "danger",
+      action: async () => {
+        setIsProcessing(true);
+        try {
+          const res = await rejectStaffLeave({
+            leaveId,
+            rejectionReason: "Declined by Administration / School Principal",
+          });
+          if (res.success) {
+            notify("warning", `Leave request for ${staffName} has been rejected.`);
+            router.refresh();
+          }
+        } catch (err: any) {
+          notify("error", "Failed to reject leave: " + err.message);
         } finally {
           setIsProcessing(false);
         }
@@ -1078,15 +1114,27 @@ export function PayrollClient({
                       </TableCell>
                       <TableCell className="text-right">
                         {l.status === "PENDING" && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleApproveLeave(l.id, l.staffName)}
-                            disabled={isProcessing}
-                            className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold gap-1"
-                          >
-                            <UserCheck className="h-3 w-3" />
-                            <span>Approve & Substitute</span>
-                          </Button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveLeave(l.id, l.staffName)}
+                              disabled={isProcessing}
+                              className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold gap-1"
+                            >
+                              <UserCheck className="h-3 w-3" />
+                              <span>Approve & Substitute</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRejectLeave(l.id, l.staffName)}
+                              disabled={isProcessing}
+                              className="h-7 text-xs text-rose-700 hover:bg-rose-50 border-rose-200 font-semibold gap-1"
+                            >
+                              <X className="h-3 w-3" />
+                              <span>Reject</span>
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -1549,10 +1597,73 @@ export function PayrollClient({
                   </div>
                 </div>
 
-                {/* 3. Banking Details */}
+                {/* 3. Leave Balances & Annual Quotas (Admin Control) */}
+                <div className="p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <CalendarCheck className="h-4 w-4 text-emerald-700" />
+                      <span className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
+                        3. Leave Balances & Annual Quotas
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditStaffForm((prev) => ({
+                          ...prev,
+                          casualLeaveBalance: 12,
+                          sickLeaveBalance: 10,
+                        }))
+                      }
+                      className="text-[10px] text-emerald-700 hover:text-emerald-900 font-semibold underline"
+                    >
+                      Reset to Standard (12 CL / 10 SL)
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
+                        <span>Casual Leave (CL) Balance *</span>
+                        <span className="font-mono text-emerald-800 font-bold text-xs">{editStaffForm.casualLeaveBalance} Days</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="30"
+                        step="0.5"
+                        required
+                        value={editStaffForm.casualLeaveBalance}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, casualLeaveBalance: Number(e.target.value) })}
+                        className="h-8 text-xs font-mono font-bold bg-white"
+                      />
+                      <span className="text-[10px] text-slate-400">Paid personal leaves</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
+                        <span>Sick Leave (SL) Balance *</span>
+                        <span className="font-mono text-blue-800 font-bold text-xs">{editStaffForm.sickLeaveBalance} Days</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="30"
+                        step="0.5"
+                        required
+                        value={editStaffForm.sickLeaveBalance}
+                        onChange={(e) => setEditStaffForm({ ...editStaffForm, sickLeaveBalance: Number(e.target.value) })}
+                        className="h-8 text-xs font-mono font-bold bg-white"
+                      />
+                      <span className="text-[10px] text-slate-400">Paid medical leaves</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Banking Details */}
                 <div className="space-y-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    3. Banking Details (for Direct Deposit)
+                    4. Banking Details (for Direct Deposit)
                   </span>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">

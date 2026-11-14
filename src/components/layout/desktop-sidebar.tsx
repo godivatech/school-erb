@@ -88,6 +88,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["SUPER_ADMIN", "PRINCIPAL", "ACCOUNTANT"],
   },
   {
+    title: "My Leaves & Profile",
+    href: "/payroll",
+    icon: UsersRound,
+    roles: ["TEACHER"],
+  },
+  {
     title: "Transport Routes",
     href: "/transport",
     icon: Bus,

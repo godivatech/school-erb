@@ -9,6 +9,7 @@ import {
   attendance,
   users,
   studentLeaves,
+  staffLeaves,
 } from "@/db/schema";
 import { eq, and, asc, inArray, sql } from "drizzle-orm";
 import {
@@ -324,6 +325,13 @@ export default async function AttendancePage({
 
   const classSummaries = Array.from(classSummariesMap.values());
 
+  // Fetch pending staff leaves for administrator awareness
+  const [pendingStaffLeaves] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(staffLeaves)
+    .where(and(eq(staffLeaves.schoolId, schoolId), eq(staffLeaves.status, "PENDING")));
+  const pendingStaffLeavesCount = Number(pendingStaffLeaves?.count || 0);
+
   const initialTab: "grid" | "register" =
     params.view === "grid"
       ? "grid"
@@ -350,6 +358,7 @@ export default async function AttendancePage({
       allSchoolLeaves={allSchoolLeaves}
       userRole={userRole}
       initialTab={initialTab}
+      pendingStaffLeavesCount={pendingStaffLeavesCount}
     />
   );
 }

@@ -46,7 +46,7 @@ export function MobileBottomNav() {
       { name: "Attendance", href: "/attendance", icon: CalendarCheck },
       { name: "Marks", href: "/exams", icon: FileSpreadsheet },
       { name: "Timetable", href: "/timetable", icon: Clock },
-      { name: "Notices", href: "/notices", icon: Bell },
+      { name: "My Leaves", href: "/payroll", icon: UsersRound },
     ];
   } else if (role === "ACCOUNTANT") {
     tabs = [

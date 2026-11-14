@@ -7,14 +7,16 @@ import {
   payrollRuns,
   users,
   academicYears,
+  substitutions,
 } from "@/db/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import {
   PayrollClient,
   PayrollStaffItem,
   LeaveRequestItem,
   StaffDirectoryItem,
 } from "./payroll-client";
+import { TeacherLeavePortalClient } from "./teacher-leave-portal-client";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +26,9 @@ import { getActiveContext } from "@/lib/context";
 export default async function PayrollPage() {
   const context = await getActiveContext();
 
-  // Role guard: Only Super Admin, Principal, and Accountant can access payroll
+  // Role guard: Parents have their dedicated parent portal
   if (context.user.role === "PARENT") {
     redirect("/parent");
-  }
-  if (context.user.role === "TEACHER") {
-    redirect("/attendance");
   }
 
   // 1. Fetch active academic year
@@ -42,6 +41,149 @@ export default async function PayrollPage() {
   const schoolId = activeYear?.schoolId || "sch_oxford_001";
   const now = new Date();
   const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  // =========================================================================
+  // TEACHER SELF-SERVICE PORTAL: My Profile, Live Leaves & Substitutions
+  // =========================================================================
+  if (context.user.role === "TEACHER") {
+    // 1. Fetch logged-in teacher's profile
+    let [teacherProfile] = await db
+      .select({
+        profileId: staffProfiles.id,
+        userId: staffProfiles.userId,
+        employeeCode: staffProfiles.employeeCode,
+        designation: staffProfiles.designation,
+        casualLeaveBalance: staffProfiles.casualLeaveBalance,
+        sickLeaveBalance: staffProfiles.sickLeaveBalance,
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+        role: users.role,
+      })
+      .from(staffProfiles)
+      .innerJoin(users, eq(staffProfiles.userId, users.id))
+      .where(and(eq(staffProfiles.userId, context.user.id), eq(staffProfiles.schoolId, schoolId)))
+      .limit(1);
+
+    // Fallback: If in demo switch mode and specific ID not linked, find first teacher profile on roster
+    if (!teacherProfile) {
+      const [fallback] = await db
+        .select({
+          profileId: staffProfiles.id,
+          userId: staffProfiles.userId,
+          employeeCode: staffProfiles.employeeCode,
+          designation: staffProfiles.designation,
+          casualLeaveBalance: staffProfiles.casualLeaveBalance,
+          sickLeaveBalance: staffProfiles.sickLeaveBalance,
+          name: users.name,
+          email: users.email,
+          phone: users.phone,
+          role: users.role,
+        })
+        .from(staffProfiles)
+        .innerJoin(users, eq(staffProfiles.userId, users.id))
+        .where(and(eq(users.role, "TEACHER"), eq(staffProfiles.schoolId, schoolId)))
+        .limit(1);
+      teacherProfile = fallback;
+    }
+
+    if (!teacherProfile) {
+      // If still no teacher profile in DB, redirect to attendance
+      redirect("/attendance");
+    }
+
+    // 2. Fetch teacher's own leaves history
+    const myLeaves = await db
+      .select({
+        id: staffLeaves.id,
+        startDate: staffLeaves.startDate,
+        endDate: staffLeaves.endDate,
+        leaveType: staffLeaves.leaveType,
+        daysCount: staffLeaves.daysCount,
+        reason: staffLeaves.reason,
+        status: staffLeaves.status,
+        createdAt: staffLeaves.createdAt,
+      })
+      .from(staffLeaves)
+      .where(and(eq(staffLeaves.staffId, teacherProfile.profileId), eq(staffLeaves.schoolId, schoolId)))
+      .orderBy(desc(staffLeaves.createdAt));
+
+    // 3. Fetch substitutions involving this teacher (covering or absent)
+    const rawSubs = await db
+      .select({
+        id: substitutions.id,
+        date: substitutions.date,
+        status: substitutions.status,
+        absentTeacherId: substitutions.absentTeacherId,
+        substituteTeacherId: substitutions.substituteTeacherId,
+      })
+      .from(substitutions)
+      .where(
+        and(
+          eq(substitutions.schoolId, schoolId),
+          sql`(${substitutions.absentTeacherId} = ${teacherProfile.userId} OR ${substitutions.substituteTeacherId} = ${teacherProfile.userId})`
+        )
+      )
+      .orderBy(desc(substitutions.date))
+      .limit(10);
+
+    const userIds = Array.from(
+      new Set(rawSubs.flatMap((s) => [s.absentTeacherId, s.substituteTeacherId]))
+    );
+    const colleagueUsers =
+      userIds.length > 0
+        ? await db
+            .select({ id: users.id, name: users.name })
+            .from(users)
+            .where(inArray(users.id, userIds))
+        : [];
+    const userNameMap = new Map(colleagueUsers.map((u) => [u.id, u.name]));
+
+    const teacherSubs = rawSubs.map((s) => {
+      const isCovering = s.substituteTeacherId === teacherProfile.userId;
+      const otherId = isCovering ? s.absentTeacherId : s.substituteTeacherId;
+      return {
+        id: s.id,
+        date: s.date,
+        otherTeacherName: userNameMap.get(otherId) || "Faculty Member",
+        isCovering,
+        status: s.status,
+      };
+    });
+
+    return (
+      <TeacherLeavePortalClient
+        teacher={{
+          id: teacherProfile.profileId,
+          userId: teacherProfile.userId,
+          name: teacherProfile.name,
+          email: teacherProfile.email || "",
+          phone: teacherProfile.phone || "",
+          role: teacherProfile.role,
+          employeeCode: teacherProfile.employeeCode,
+          designation: teacherProfile.designation,
+          casualLeaveBalance: parseFloat(teacherProfile.casualLeaveBalance || "12"),
+          sickLeaveBalance: parseFloat(teacherProfile.sickLeaveBalance || "10"),
+        }}
+        leaves={myLeaves.map((l) => ({
+          id: l.id,
+          startDate: l.startDate,
+          endDate: l.endDate,
+          leaveType: l.leaveType,
+          daysCount: l.daysCount,
+          reason: l.reason,
+          status: l.status,
+          createdAt: l.createdAt.toISOString(),
+        }))}
+        substitutions={teacherSubs}
+        schoolId={schoolId}
+      />
+    );
+  }
+
+  // =========================================================================
+  // ADMINISTRATION VIEW: Super Admin, Principal, Accountant
+  // =========================================================================
 
   // 2. Fetch staff profiles joined with users
   const staff = await db

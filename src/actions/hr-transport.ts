@@ -887,6 +887,17 @@ export interface SubmitStaffLeaveInput {
 export async function submitStaffLeave(input: SubmitStaffLeaveInput) {
   const session = await resolveVerifiedSession(input);
 
+  if (session.userRole === "TEACHER") {
+    const [profile] = await db
+      .select({ id: staffProfiles.id })
+      .from(staffProfiles)
+      .where(and(eq(staffProfiles.id, input.staffId), eq(staffProfiles.userId, session.userId)))
+      .limit(1);
+    if (!profile) {
+      throw new Error("You are only authorized to submit leave applications for your own profile.");
+    }
+  }
+
   const startObj = new Date(input.startDate);
   const endObj = new Date(input.endDate);
   if (endObj < startObj) {
@@ -911,7 +922,67 @@ export async function submitStaffLeave(input: SubmitStaffLeaveInput) {
 
     safeRevalidatePath("/hr");
     safeRevalidatePath("/payroll");
+    safeRevalidatePath("/attendance");
     return { success: true, leave };
+  });
+}
+
+export interface RejectStaffLeaveInput {
+  schoolId?: string;
+  userId?: string;
+  userRole?: Role;
+  leaveId: string;
+  rejectionReason?: string;
+}
+
+export async function rejectStaffLeave(input: RejectStaffLeaveInput) {
+  const session = await resolveVerifiedSession(input);
+  assertRole(session.userRole, ["SUPER_ADMIN", "PRINCIPAL"]);
+
+  return await db.transaction(async (tx) => {
+    const [leave] = await tx
+      .select()
+      .from(staffLeaves)
+      .where(and(eq(staffLeaves.id, input.leaveId), eq(staffLeaves.schoolId, session.schoolId)))
+      .limit(1);
+
+    if (!leave) {
+      throw new Error("Leave application not found.");
+    }
+
+    const annotatedReason = input.rejectionReason?.trim()
+      ? `${leave.reason ? leave.reason + " " : ""}[Rejected by ${session.userRole}: ${input.rejectionReason.trim()}]`
+      : leave.reason;
+
+    const [updatedLeave] = await tx
+      .update(staffLeaves)
+      .set({
+        status: "REJECTED",
+        approvedById: session.userId,
+        reason: annotatedReason,
+      })
+      .where(eq(staffLeaves.id, leave.id))
+      .returning();
+
+    await tx.insert(auditLogs).values({
+      schoolId: session.schoolId,
+      userId: session.userId,
+      entityType: "STAFF_LEAVE",
+      entityId: leave.id,
+      action: "REJECT",
+      newValueJson: {
+        staffId: leave.staffId,
+        leaveType: leave.leaveType,
+        daysCount: leave.daysCount,
+        status: "REJECTED",
+      },
+      reason: input.rejectionReason?.trim() || "Leave request rejected by administration.",
+    });
+
+    safeRevalidatePath("/hr");
+    safeRevalidatePath("/payroll");
+    safeRevalidatePath("/attendance");
+    return { success: true, leave: updatedLeave };
   });
 }
 
@@ -988,6 +1059,8 @@ export interface UpdateStaffMemberInput {
   designation: string;
   basicSalary: number;
   hra: number;
+  casualLeaveBalance?: number;
+  sickLeaveBalance?: number;
   bankAccountNumber?: string;
   bankIfsc?: string;
   isActive?: boolean;
@@ -1027,6 +1100,8 @@ export async function updateStaffMember(input: UpdateStaffMemberInput) {
         basicSalary: staffProfiles.basicSalary,
         hra: staffProfiles.hra,
         designation: staffProfiles.designation,
+        casualLeaveBalance: staffProfiles.casualLeaveBalance,
+        sickLeaveBalance: staffProfiles.sickLeaveBalance,
       })
       .from(staffProfiles)
       .where(
@@ -1094,7 +1169,7 @@ export async function updateStaffMember(input: UpdateStaffMemberInput) {
       )
       .returning();
 
-    // 5. Update Staff Profile
+    // 5. Update Staff Profile (including leave quotas)
     const [updatedProfile] = await tx
       .update(staffProfiles)
       .set({
@@ -1102,6 +1177,12 @@ export async function updateStaffMember(input: UpdateStaffMemberInput) {
         designation: input.designation.trim(),
         basicSalary: String(input.basicSalary),
         hra: String(input.hra),
+        ...(input.casualLeaveBalance !== undefined && !isNaN(input.casualLeaveBalance)
+          ? { casualLeaveBalance: String(input.casualLeaveBalance.toFixed(1)) }
+          : {}),
+        ...(input.sickLeaveBalance !== undefined && !isNaN(input.sickLeaveBalance)
+          ? { sickLeaveBalance: String(input.sickLeaveBalance.toFixed(1)) }
+          : {}),
         bankAccountNumber: input.bankAccountNumber?.trim() || null,
         bankIfsc: input.bankIfsc?.trim() || null,
       })
@@ -1113,7 +1194,7 @@ export async function updateStaffMember(input: UpdateStaffMemberInput) {
       )
       .returning();
 
-    // 6. Audit Trail with Salary Increment detection
+    // 6. Audit Trail with Salary Increment & Leave Quota detection
     const oldTotal = parseFloat(existingProfile.basicSalary) + parseFloat(existingProfile.hra || "0");
     const newTotal = input.basicSalary + input.hra;
     const diff = newTotal - oldTotal;
@@ -1124,6 +1205,8 @@ export async function updateStaffMember(input: UpdateStaffMemberInput) {
         auditReason = `Salary Appraisal (+₹${diff.toLocaleString()}): Basic ₹${input.basicSalary.toLocaleString()}, HRA ₹${input.hra.toLocaleString()}`;
       } else if (diff < 0) {
         auditReason = `Salary Adjustment (-₹${Math.abs(diff).toLocaleString()}): Basic ₹${input.basicSalary.toLocaleString()}, HRA ₹${input.hra.toLocaleString()}`;
+      } else if (input.casualLeaveBalance !== undefined || input.sickLeaveBalance !== undefined) {
+        auditReason = `Updated leave quotas for ${updatedUser.name} (${cleanEmpCode}): CL ${updatedProfile.casualLeaveBalance}, SL ${updatedProfile.sickLeaveBalance}`;
       } else {
         auditReason = `Updated staff profile for ${updatedUser.name} (${cleanEmpCode})`;
       }
@@ -1141,6 +1224,8 @@ export async function updateStaffMember(input: UpdateStaffMemberInput) {
         designation: updatedProfile.designation,
         basicSalary: updatedProfile.basicSalary,
         hra: updatedProfile.hra,
+        casualLeaveBalance: updatedProfile.casualLeaveBalance,
+        sickLeaveBalance: updatedProfile.sickLeaveBalance,
         oldTotal,
         newTotal,
         diff,
